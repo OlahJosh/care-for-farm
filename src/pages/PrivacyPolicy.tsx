@@ -23,7 +23,7 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
               <p className="text-muted-foreground">
-                CropGuard ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy 
+                FarmCare ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy 
                 explains how we collect, use, disclose, and safeguard your information when you use our agricultural 
                 pest detection and farm management service.
               </p>
@@ -192,8 +192,8 @@ const PrivacyPolicy = () => {
                 If you have questions about this Privacy Policy or wish to exercise your rights, please contact us at:
               </p>
               <ul className="list-none text-muted-foreground mt-2 space-y-1">
-                <li>Email: privacy@cropguard.com</li>
-                <li>Address: CropGuard Privacy Team</li>
+                <li>Email: privacy@farmcare.com</li>
+                <li>Address: FarmCare Privacy Team</li>
               </ul>
             </section>
           </CardContent>

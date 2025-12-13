@@ -192,7 +192,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-16 items-center border-b border-border px-6">
-                <h1 className="text-xl font-bold text-primary">CropGuard</h1>
+                <h1 className="text-xl font-bold text-primary">FarmCare</h1>
               </div>
               <nav className="flex flex-col gap-1 p-4">
                 <NavigationLinks onLinkClick={() => setMobileMenuOpen(false)} />
@@ -201,7 +201,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </Sheet>
         </div>
         <Link to="/dashboard" className="text-xl font-bold text-primary">
-          CropGuard
+          FarmCare
         </Link>
         <div className="flex items-center gap-2">
           <NotificationsMenu />
@@ -213,7 +213,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <aside className="hidden lg:block w-64 border-r border-border bg-card">
         <div className="flex h-16 items-center border-b border-border px-6">
           <Link to="/dashboard" className="text-xl font-bold text-primary hover:text-primary/90 transition-colors">
-            CropGuard
+            FarmCare
           </Link>
         </div>
         <nav className="flex flex-col gap-1 p-4">
