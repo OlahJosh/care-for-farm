@@ -11,7 +11,25 @@ import { Upload as UploadIcon, Camera, Plane, Video, Cpu, Cloud, Zap, Download, 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { detectPestInBrowser, initializePestDetector, checkWebGPUSupport, isModelCached, downloadAndCacheModel, BrowserDetectionResult } from "@/utils/browserPestDetection";
+import { 
+  detectPestInBrowser, 
+  initializePestDetector, 
+  checkWebGPUSupport, 
+  isModelCached, 
+  downloadAndCacheModel, 
+  BrowserDetectionResult,
+  MODEL_OPTIONS,
+  ModelSize,
+  getSelectedModelSize,
+  setSelectedModelSize
+} from "@/utils/browserPestDetection";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Helper function to create alerts for high/medium infestations
 const createAlertIfNeeded = async (reportId: string, scanType: string) => {
@@ -76,6 +94,7 @@ const Upload = () => {
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null);
   const [modelCached, setModelCached] = useState(false);
   const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelSize>(getSelectedModelSize());
   
   // Live Scan state
   const [liveScanActive, setLiveScanActive] = useState(false);
@@ -116,6 +135,15 @@ const Upload = () => {
       });
     }
   }, [useBrowserDetection, browserDetectionReady, isLoadingModel, modelCached]);
+
+  // Handle model size change
+  const handleModelChange = (size: ModelSize) => {
+    setSelectedModel(size);
+    setSelectedModelSize(size);
+    setModelCached(false);
+    setBrowserDetectionReady(false);
+    toast.info(`Switched to ${MODEL_OPTIONS[size].name} model`);
+  };
 
   // Manual model download function
   const handleDownloadModel = async () => {
@@ -698,14 +726,37 @@ const Upload = () => {
               />
             </div>
             
-            {/* Download Model Button - shown when browser detection enabled but model not cached */}
-            {useBrowserDetection && !modelCached && !browserDetectionReady && (
-              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-dashed">
+            {/* Model Selection and Download - shown when browser detection enabled */}
+            {useBrowserDetection && !browserDetectionReady && (
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-dashed space-y-3">
+                {/* Model Size Selector */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Select Model Size</Label>
+                  <Select value={selectedModel} onValueChange={(v) => handleModelChange(v as ModelSize)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(MODEL_OPTIONS) as ModelSize[]).map((key) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex flex-col items-start">
+                            <span>{MODEL_OPTIONS[key].name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {MODEL_OPTIONS[selectedModel].description}
+                  </p>
+                </div>
+                
+                {/* Download Button */}
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">Download AI Model</p>
                     <p className="text-xs text-muted-foreground">
-                      ~350MB once · Works offline forever
+                      {MODEL_OPTIONS[selectedModel].size} download, works offline forever
                     </p>
                   </div>
                   <Button 
@@ -724,7 +775,7 @@ const Upload = () => {
                   </Button>
                 </div>
                 {isDownloadingModel && (
-                  <div className="mt-2">
+                  <div>
                     <Progress value={modelLoadProgress} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1 text-center">
                       {modelLoadProgress}% - Please wait, downloading model...
