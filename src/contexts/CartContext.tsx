@@ -7,18 +7,20 @@ export interface CartItem {
   image: string;
   seller: string;
   quantity: number;
+  stock?: number; // Available stock
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (item: Omit<CartItem, "quantity">) => void;
+  addToCart: (item: Omit<CartItem, "quantity">, quantity?: number) => boolean;
   removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  updateQuantity: (id: string, quantity: number) => boolean;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  getItemQuantity: (id: string) => number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -45,34 +47,55 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [items]);
 
-  const addToCart = (item: Omit<CartItem, "quantity">) => {
+  const addToCart = (item: Omit<CartItem, "quantity">, quantity: number = 1): boolean => {
+    const existing = items.find((i) => i.id === item.id);
+    const currentQty = existing?.quantity || 0;
+    const newQty = currentQty + quantity;
+    
+    // Check stock limit
+    if (item.stock && newQty > item.stock) {
+      return false;
+    }
+    
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === item.id ? { ...i, quantity: newQty } : i
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+      return [...prev, { ...item, quantity }];
     });
+    return true;
   };
 
   const removeFromCart = (id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (id: string, quantity: number): boolean => {
     if (quantity < 1) {
       removeFromCart(id);
-      return;
+      return true;
     }
+    
+    const item = items.find(i => i.id === id);
+    if (item?.stock && quantity > item.stock) {
+      return false;
+    }
+    
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, quantity } : i))
     );
+    return true;
   };
 
   const clearCart = () => {
     setItems([]);
+  };
+
+  const getItemQuantity = (id: string): number => {
+    const item = items.find(i => i.id === id);
+    return item?.quantity || 0;
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -93,6 +116,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         totalPrice,
         isCartOpen,
         setIsCartOpen,
+        getItemQuantity,
       }}
     >
       {children}

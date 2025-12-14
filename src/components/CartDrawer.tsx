@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 export const CartDrawer = () => {
+  const navigate = useNavigate();
   const {
     items,
     removeFromCart,
@@ -19,7 +21,8 @@ export const CartDrawer = () => {
   } = useCart();
 
   const handleCheckout = () => {
-    toast.info("Checkout functionality coming soon! Contact sellers directly for now.");
+    setIsCartOpen(false);
+    navigate("/checkout");
   };
 
   return (
