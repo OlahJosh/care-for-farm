@@ -4,6 +4,27 @@ import { pipeline, env } from '@huggingface/transformers';
 env.allowLocalModels = false;
 env.useBrowserCache = true; // Cache models in browser for faster reloads
 
+const MODEL_ID = 'Xenova/vit-base-patch16-224';
+const MODEL_CACHE_KEY = 'farmcare-pest-model-cached';
+
+// Check if model is already cached
+export function isModelCached(): boolean {
+  try {
+    return localStorage.getItem(MODEL_CACHE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+// Mark model as cached
+function markModelCached(): void {
+  try {
+    localStorage.setItem(MODEL_CACHE_KEY, 'true');
+  } catch {
+    console.warn('Could not save cache status to localStorage');
+  }
+}
+
 const MAX_IMAGE_DIMENSION = 512;
 
 let classifierPipeline: any = null;
@@ -38,7 +59,7 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
     // Use a lightweight image classification model
     classifierPipeline = await pipeline(
       'image-classification',
-      'Xenova/vit-base-patch16-224',
+      MODEL_ID,
       { 
         device: 'webgpu',
         progress_callback: (data: any) => {
@@ -50,6 +71,7 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
     );
     
     console.log('Pest detection model loaded successfully');
+    markModelCached();
     isLoading = false;
     return true;
   } catch (error) {
@@ -59,10 +81,11 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
       // Fallback to WASM if WebGPU not available
       classifierPipeline = await pipeline(
         'image-classification',
-        'Xenova/vit-base-patch16-224',
+        MODEL_ID,
         { device: 'wasm' }
       );
       console.log('Pest detection model loaded with WASM fallback');
+      markModelCached();
       isLoading = false;
       return true;
     } catch (wasmError) {
@@ -71,6 +94,16 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
       return false;
     }
   }
+}
+
+// Download and cache model manually (for one-time download button)
+export async function downloadAndCacheModel(onProgress?: (progress: number) => void): Promise<boolean> {
+  if (classifierPipeline) {
+    markModelCached();
+    return true;
+  }
+  
+  return initializePestDetector(onProgress);
 }
 
 // Resize image if needed for faster processing
