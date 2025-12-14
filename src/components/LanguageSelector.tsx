@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,25 +25,11 @@ const languages = [
   { code: "wo", name: "Wolof", flag: "🇸🇳" },
 ];
 
-declare global {
-  interface Window {
-    google: {
-      translate: {
-        TranslateElement: {
-          InlineLayout: {
-            SIMPLE: number;
-          };
-        };
-      };
-    };
-  }
-}
-
 export const LanguageSelector = () => {
   const [currentLang, setCurrentLang] = useState("en");
 
   useEffect(() => {
-    // Check if there's a saved language preference
+    // Check for saved language or Google Translate cookie
     const savedLang = localStorage.getItem("farmcare-language");
     if (savedLang) {
       setCurrentLang(savedLang);
@@ -54,21 +40,27 @@ export const LanguageSelector = () => {
     setCurrentLang(langCode);
     localStorage.setItem("farmcare-language", langCode);
 
-    // Trigger Google Translate
-    const selectElement = document.querySelector(
-      ".goog-te-combo"
-    ) as HTMLSelectElement;
+    // Set Google Translate cookie
+    const domain = window.location.hostname;
     
-    if (selectElement) {
-      selectElement.value = langCode;
-      selectElement.dispatchEvent(new Event("change"));
-    } else {
-      // Fallback: Use cookie method
-      const domain = window.location.hostname;
-      document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain}`;
-      document.cookie = `googtrans=/en/${langCode}; path=/`;
+    // Clear existing googtrans cookies
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}`;
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain}`;
+    
+    if (langCode === "en") {
+      // For English, just clear cookies and reload
       window.location.reload();
+      return;
     }
+    
+    // Set new cookies for translation
+    document.cookie = `googtrans=/en/${langCode}; path=/`;
+    document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain}`;
+    document.cookie = `googtrans=/en/${langCode}; path=/; domain=.${domain}`;
+    
+    // Reload to apply translation
+    window.location.reload();
   };
 
   const currentLanguage = languages.find((l) => l.code === currentLang) || languages[0];
@@ -80,8 +72,9 @@ export const LanguageSelector = () => {
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" title={currentLanguage.name}>
             <Globe className="h-5 w-5" />
+            <span className="absolute -bottom-1 -right-1 text-xs">{currentLanguage.flag}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 max-h-80 overflow-y-auto">
@@ -89,10 +82,13 @@ export const LanguageSelector = () => {
             <DropdownMenuItem
               key={lang.code}
               onClick={() => changeLanguage(lang.code)}
-              className={currentLang === lang.code ? "bg-accent" : ""}
+              className={`flex items-center justify-between ${currentLang === lang.code ? "bg-accent" : ""}`}
             >
-              <span className="mr-2">{lang.flag}</span>
-              {lang.name}
+              <span className="flex items-center gap-2">
+                <span>{lang.flag}</span>
+                {lang.name}
+              </span>
+              {currentLang === lang.code && <Check className="h-4 w-4" />}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
