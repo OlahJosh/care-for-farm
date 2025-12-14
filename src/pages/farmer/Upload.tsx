@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload as UploadIcon, Camera, Plane, Video, Cpu, Cloud, Zap } from "lucide-react";
+import { Upload as UploadIcon, Camera, Plane, Video, Cpu, Cloud, Zap, Download, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { detectPestInBrowser, initializePestDetector, checkWebGPUSupport, BrowserDetectionResult } from "@/utils/browserPestDetection";
+import { detectPestInBrowser, initializePestDetector, checkWebGPUSupport, isModelCached, downloadAndCacheModel, BrowserDetectionResult } from "@/utils/browserPestDetection";
 
 // Helper function to create alerts for high/medium infestations
 const createAlertIfNeeded = async (reportId: string, scanType: string) => {
@@ -74,6 +74,8 @@ const Upload = () => {
   const [modelLoadProgress, setModelLoadProgress] = useState(0);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null);
+  const [modelCached, setModelCached] = useState(false);
+  const [isDownloadingModel, setIsDownloadingModel] = useState(false);
   
   // Live Scan state
   const [liveScanActive, setLiveScanActive] = useState(false);
@@ -87,17 +89,18 @@ const Upload = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
   
-  // Check WebGPU support on mount
+  // Check WebGPU support and cache status on mount
   useEffect(() => {
     checkWebGPUSupport().then(supported => {
       setWebGPUSupported(supported);
       console.log('WebGPU supported:', supported);
     });
+    setModelCached(isModelCached());
   }, []);
   
-  // Pre-load model when browser detection is enabled
+  // Only auto-load model if already cached (saves data)
   useEffect(() => {
-    if (useBrowserDetection && !browserDetectionReady && !isLoadingModel) {
+    if (useBrowserDetection && !browserDetectionReady && !isLoadingModel && modelCached) {
       setIsLoadingModel(true);
       initializePestDetector((progress) => {
         setModelLoadProgress(progress);
@@ -105,15 +108,39 @@ const Upload = () => {
         setBrowserDetectionReady(success);
         setIsLoadingModel(false);
         if (success) {
-          toast.success("AI model loaded! Detection will be instant.");
+          toast.success("AI model loaded from cache!");
         }
       }).catch(() => {
         setIsLoadingModel(false);
-        toast.error("Failed to load browser AI. Using server detection.");
-        setUseBrowserDetection(false);
+        setModelCached(false);
       });
     }
-  }, [useBrowserDetection, browserDetectionReady, isLoadingModel]);
+  }, [useBrowserDetection, browserDetectionReady, isLoadingModel, modelCached]);
+
+  // Manual model download function
+  const handleDownloadModel = async () => {
+    setIsDownloadingModel(true);
+    setModelLoadProgress(0);
+    
+    try {
+      const success = await downloadAndCacheModel((progress) => {
+        setModelLoadProgress(progress);
+      });
+      
+      if (success) {
+        setModelCached(true);
+        setBrowserDetectionReady(true);
+        toast.success("AI model downloaded! You can now analyze offline.");
+      } else {
+        toast.error("Failed to download model. Check your connection.");
+      }
+    } catch (error) {
+      console.error('Model download error:', error);
+      toast.error("Download failed. Try again later.");
+    } finally {
+      setIsDownloadingModel(false);
+    }
+  };
 
   // Helper function for browser-based detection and saving to DB
   const processBrowserDetection = async (file: File, scanType: string): Promise<string> => {
@@ -653,10 +680,12 @@ const Upload = () => {
                   <p className="text-xs text-muted-foreground">
                     {useBrowserDetection 
                       ? browserDetectionReady 
-                        ? "Instant detection, no cold starts" 
-                        : isLoadingModel 
-                          ? "Loading model..." 
-                          : "Enable for faster analysis"
+                        ? "Instant detection, works offline" 
+                        : modelCached
+                          ? isLoadingModel
+                            ? "Loading from cache..." 
+                            : "Model cached, ready to load"
+                          : "Download model first (one-time)"
                       : "Uses external AI server"
                     }
                   </p>
@@ -668,19 +697,59 @@ const Upload = () => {
                 onCheckedChange={setUseBrowserDetection}
               />
             </div>
-            {isLoadingModel && (
+            
+            {/* Download Model Button - shown when browser detection enabled but model not cached */}
+            {useBrowserDetection && !modelCached && !browserDetectionReady && (
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-dashed">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Download AI Model</p>
+                    <p className="text-xs text-muted-foreground">
+                      ~350MB once · Works offline forever
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleDownloadModel} 
+                    disabled={isDownloadingModel}
+                    size="sm"
+                  >
+                    {isDownloadingModel ? (
+                      <>Downloading...</>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {isDownloadingModel && (
+                  <div className="mt-2">
+                    <Progress value={modelLoadProgress} className="h-2" />
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      {modelLoadProgress}% - Please wait, downloading model...
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Loading from cache indicator */}
+            {isLoadingModel && modelCached && (
               <div className="mt-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-primary animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Loading AI model...</span>
+                  <span className="text-xs text-muted-foreground">Loading from cache...</span>
                 </div>
                 <Progress value={modelLoadProgress} className="h-2" />
               </div>
             )}
+            
+            {/* Ready indicator */}
             {browserDetectionReady && useBrowserDetection && (
               <div className="mt-2 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                <Zap className="h-3 w-3" />
-                <span>Ready! {webGPUSupported ? "WebGPU accelerated" : "WASM mode"}</span>
+                <CheckCircle className="h-3 w-3" />
+                <span>Ready! {webGPUSupported ? "WebGPU accelerated" : "WASM mode"} · Offline capable</span>
               </div>
             )}
           </Card>
