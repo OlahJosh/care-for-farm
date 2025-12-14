@@ -68,6 +68,7 @@ const Auth = () => {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [emailMode, setEmailMode] = useState<"login" | "signup">("login");
   
   // Phone auth states
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -78,6 +79,7 @@ const Auth = () => {
   const [phoneFullName, setPhoneFullName] = useState("");
   const [phoneRole, setPhoneRole] = useState<"farmer" | "agronomist">("farmer");
   const [phoneAgreeToTerms, setPhoneAgreeToTerms] = useState(false);
+  const [phoneSupported, setPhoneSupported] = useState(true);
 
   useEffect(() => {
     if (user && userRole) {
@@ -221,7 +223,14 @@ const Auth = () => {
       toast.success("OTP sent to your phone!");
       setPhoneAuthStep("otp");
     } catch (error: any) {
-      toast.error(error.message || "Failed to send OTP");
+      const message = error?.message || "Failed to send OTP";
+      if (typeof message === "string" && message.toLowerCase().includes("unsupported phone provider")) {
+        toast.error("Phone sign-in is not enabled yet. Please use email and password for now.");
+        setPhoneSupported(false);
+        setAuthMethod("email");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -345,6 +354,7 @@ const Auth = () => {
     setPhoneFullName("");
     setPhoneRole("farmer");
     setPhoneAgreeToTerms(false);
+    setPhoneSupported(true);
   };
 
   // Render phone auth content based on step
@@ -513,18 +523,33 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted/60 p-6">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
             <img src={farmcareLogo} alt="FarmCare Logo" className="h-12 w-12 rounded-lg" />
           </div>
-          <CardTitle className="text-3xl">FarmCare</CardTitle>
-          <CardDescription>Sign in or create your account</CardDescription>
+          <p className="text-sm font-semibold text-primary mb-1">FarmCare</p>
+          <CardTitle className="text-3xl">
+            {authMethod === "phone"
+              ? phoneAuthStep === "profile"
+                ? "Complete your profile"
+                : "Sign in with phone"
+              : emailMode === "signup"
+                ? "Create your account"
+                : "Welcome back"}
+          </CardTitle>
+          <CardDescription>
+            {authMethod === "phone"
+              ? "Use your mobile number to access your farm dashboard"
+              : emailMode === "signup"
+                ? "Signing up as a new farmer or agronomist"
+                : "Enter your details to access your farm"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Auth method toggle */}
-          <div className="flex justify-center gap-2 mb-6">
+          <div className="flex justify-center gap-2 mb-3">
             <Button
               variant={authMethod === "email" ? "default" : "outline"}
               size="sm"
@@ -542,16 +567,22 @@ const Auth = () => {
               size="sm"
               onClick={() => setAuthMethod("phone")}
               className="flex items-center gap-2"
+              disabled={!phoneSupported}
             >
               <Phone className="h-4 w-4" />
               Phone
             </Button>
           </div>
+          {!phoneSupported && (
+            <p className="text-xs text-center text-destructive mb-4">
+              Phone sign-in is not available yet. Please use email instead.
+            </p>
+          )}
 
           {authMethod === "phone" ? (
             renderPhoneAuth()
           ) : (
-            <Tabs defaultValue="login">
+            <Tabs value={emailMode} onValueChange={(value) => setEmailMode(value as "login" | "signup")}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
