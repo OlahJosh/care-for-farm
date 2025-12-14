@@ -855,19 +855,19 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/30 p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Logo and header outside card */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center mb-4">
-            <img src={farmcareLogo} alt="FarmCare Logo" className="h-14 w-14 rounded-xl shadow-md" />
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center mb-3">
+            <img src={farmcareLogo} alt="FarmCare Logo" className="h-12 w-12 rounded-xl shadow-md" />
           </div>
-          <p className="text-sm font-semibold text-primary tracking-wide uppercase">FarmCare</p>
+          <h1 className="text-xl font-bold text-foreground">FarmCare</h1>
         </div>
 
         <Card className="border-0 shadow-xl bg-card/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-2 pt-6">
-            <CardTitle className="text-2xl font-bold tracking-tight">
+          <CardHeader className="text-center pb-2 pt-5">
+            <CardTitle className="text-lg font-semibold">
               {getTitle()}
             </CardTitle>
-            <CardDescription className="text-base">
+            <CardDescription className="text-sm">
               {getDescription()}
             </CardDescription>
           </CardHeader>
