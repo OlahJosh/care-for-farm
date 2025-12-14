@@ -408,7 +408,7 @@ const Dashboard = () => {
                     <div
                       key={report.id}
                       className="flex items-center justify-between p-4 hover:bg-accent transition-colors cursor-pointer"
-                      onClick={() => navigate(`/report/${report.id}`)}
+                      onClick={() => navigate(`/farmer/report/${report.id}`)}
                     >
                       <div className="flex items-center gap-4">
                         <div className="relative w-16 h-16 rounded-md overflow-hidden border border-border">
