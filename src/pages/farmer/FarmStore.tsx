@@ -17,6 +17,7 @@ interface Product {
   sellerPhone: string;
   sellerLocation: string;
   image: string;
+  stock: number; // Available stock
 }
 
 const products: Product[] = [
@@ -27,8 +28,9 @@ const products: Product[] = [
     category: "seeds",
     seller: "Ogbomoso Agro Dealers Ltd",
     sellerPhone: "+2348012345678",
-    sellerLocation: "8.1340,4.2560", // Ogbomoso coordinates
+    sellerLocation: "8.1340,4.2560",
     image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=400&h=300&fit=crop&q=80",
+    stock: 25,
   },
   {
     id: "2",
@@ -39,6 +41,7 @@ const products: Product[] = [
     sellerPhone: "+2348123456789",
     sellerLocation: "8.1340,4.2560",
     image: "https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=400&h=300&fit=crop&q=80",
+    stock: 10,
   },
   {
     id: "3",
@@ -49,6 +52,7 @@ const products: Product[] = [
     sellerPhone: "+2348098765432",
     sellerLocation: "8.1340,4.2560",
     image: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400&h=300&fit=crop&q=80",
+    stock: 3,
   },
   {
     id: "4",
@@ -57,8 +61,9 @@ const products: Product[] = [
     category: "seeds",
     seller: "Kano Agricultural Center",
     sellerPhone: "+2347012345678",
-    sellerLocation: "12.0022,8.5919", // Kano coordinates
+    sellerLocation: "12.0022,8.5919",
     image: "https://images.unsplash.com/photo-1536304929831-99796327d485?w=400&h=300&fit=crop&q=80",
+    stock: 18,
   },
   {
     id: "5",
@@ -67,8 +72,9 @@ const products: Product[] = [
     category: "fertilizers",
     seller: "Agro-Allied Solutions Ibadan",
     sellerPhone: "+2348156789012",
-    sellerLocation: "7.3775,3.9470", // Ibadan coordinates
+    sellerLocation: "7.3775,3.9470",
     image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&h=300&fit=crop",
+    stock: 7,
   },
   {
     id: "6",
@@ -77,8 +83,9 @@ const products: Product[] = [
     category: "tools",
     seller: "Abeokuta Equipment Store",
     sellerPhone: "+2348187654321",
-    sellerLocation: "7.1475,3.3619", // Abeokuta coordinates
+    sellerLocation: "7.1475,3.3619",
     image: "https://images.unsplash.com/photo-1566140967404-b8b3932483f5?w=400&h=300&fit=crop&q=80",
+    stock: 5,
   },
   {
     id: "7",
@@ -87,8 +94,9 @@ const products: Product[] = [
     category: "seeds",
     seller: "Ondo State Agro Ventures",
     sellerPhone: "+2347098765432",
-    sellerLocation: "7.2502,5.1950", // Akure coordinates
+    sellerLocation: "7.2502,5.1950",
     image: "https://images.unsplash.com/photo-1578849278619-e73505e9610f?w=400&h=300&fit=crop&q=80",
+    stock: 30,
   },
   {
     id: "8",
@@ -99,6 +107,7 @@ const products: Product[] = [
     sellerPhone: "+2348023456789",
     sellerLocation: "8.1340,4.2560",
     image: "https://images.unsplash.com/photo-1625246287940-1b6dd9c09e66?w=400&h=300&fit=crop",
+    stock: 15,
   },
   {
     id: "9",
@@ -107,8 +116,9 @@ const products: Product[] = [
     category: "tools",
     seller: "Kaduna Irrigation Supplies",
     sellerPhone: "+2348134567890",
-    sellerLocation: "10.5225,7.4388", // Kaduna coordinates
+    sellerLocation: "10.5225,7.4388",
     image: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400&h=300&fit=crop",
+    stock: 2,
   },
   {
     id: "10",
@@ -117,8 +127,9 @@ const products: Product[] = [
     category: "seeds",
     seller: "Jos Plateau Seedlings Co.",
     sellerPhone: "+2347087654321",
-    sellerLocation: "9.8965,8.8583", // Jos coordinates
+    sellerLocation: "9.8965,8.8583",
     image: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?w=400&h=300&fit=crop",
+    stock: 40,
   },
   {
     id: "11",
@@ -127,8 +138,9 @@ const products: Product[] = [
     category: "fertilizers",
     seller: "Benue Agro-Chemical Stores",
     sellerPhone: "+2348145678901",
-    sellerLocation: "7.7338,8.5380", // Makurdi coordinates
+    sellerLocation: "7.7338,8.5380",
     image: "https://images.unsplash.com/photo-1625246287823-02fc8e18390f?w=400&h=300&fit=crop",
+    stock: 8,
   },
   {
     id: "12",
@@ -137,8 +149,9 @@ const products: Product[] = [
     category: "tools",
     seller: "Enugu Farm Equipment Ltd",
     sellerPhone: "+2348098761234",
-    sellerLocation: "6.4403,7.4960", // Enugu coordinates
+    sellerLocation: "6.4403,7.4960",
     image: "https://images.unsplash.com/photo-1513828947302-d5d5203df0be?w=400&h=300&fit=crop",
+    stock: 6,
   },
   {
     id: "13",
@@ -147,8 +160,9 @@ const products: Product[] = [
     category: "seeds",
     seller: "Sokoto Grains Cooperative",
     sellerPhone: "+2347076543210",
-    sellerLocation: "13.0622,5.2339", // Sokoto coordinates
+    sellerLocation: "13.0622,5.2339",
     image: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&h=300&fit=crop&q=80",
+    stock: 22,
   },
   {
     id: "14",
@@ -157,8 +171,9 @@ const products: Product[] = [
     category: "fertilizers",
     seller: "Delta Crop Protection Center",
     sellerPhone: "+2348156781234",
-    sellerLocation: "5.5166,5.7500", // Warri coordinates
+    sellerLocation: "5.5166,5.7500",
     image: "https://images.unsplash.com/photo-1560493676-04071c5f467b?w=400&h=300&fit=crop",
+    stock: 12,
   },
   {
     id: "15",
@@ -169,6 +184,7 @@ const products: Product[] = [
     sellerPhone: "+2348123456789",
     sellerLocation: "8.1340,4.2560",
     image: "https://images.unsplash.com/photo-1595521624992-48a59aff8950?w=400&h=300&fit=crop&q=80",
+    stock: 50,
   },
 ];
 
@@ -195,13 +211,19 @@ const FarmStore = () => {
   };
 
   const handleAddToCart = (product: Product) => {
-    addToCart({
+    const success = addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
       seller: product.seller,
+      stock: product.stock,
     });
+    
+    if (!success) {
+      toast.error(`Only ${product.stock} units available`);
+      return;
+    }
     setAddedItems(prev => new Set(prev).add(product.id));
     toast.success(`${product.name} added to cart!`);
     
@@ -291,10 +313,13 @@ const FarmStore = () => {
                     <h3 className="font-semibold text-lg line-clamp-2">{product.name}</h3>
                   </div>
                   
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold text-primary">
                       ₦{product.price.toLocaleString()}
                     </span>
+                    <Badge variant={product.stock <= 5 ? "destructive" : "outline"} className="text-xs">
+                      {product.stock} left
+                    </Badge>
                   </div>
 
                   <div className="text-sm text-muted-foreground">
