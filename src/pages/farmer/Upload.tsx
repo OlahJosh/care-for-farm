@@ -4,37 +4,14 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Upload as UploadIcon, Camera, Plane, Video, Cpu, Cloud, Zap, Download, CheckCircle } from "lucide-react";
+import { Upload as UploadIcon, Camera, Plane, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  detectPestInBrowser, 
-  initializePestDetector, 
-  checkWebGPUSupport, 
-  isModelCached, 
-  downloadAndCacheModel, 
-  BrowserDetectionResult,
-  MODEL_OPTIONS,
-  ModelSize,
-  getSelectedModelSize,
-  setSelectedModelSize
-} from "@/utils/browserPestDetection";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 // Helper function to create alerts for high/medium infestations
 const createAlertIfNeeded = async (reportId: string, scanType: string) => {
   try {
-    // Get the report details
     const { data: report, error: reportError } = await supabase
       .from('analysis_reports')
       .select('infestation_level, farm_id')
@@ -46,7 +23,6 @@ const createAlertIfNeeded = async (reportId: string, scanType: string) => {
       return;
     }
 
-    // Only create alert for HIGH or MEDIUM infestations
     if (report.infestation_level === 'HIGH' || report.infestation_level === 'MEDIUM') {
       const scanTypeLabel = scanType === 'spot_check' ? 'Spot Check' : scanType === 'drone_flight' ? 'Drone Scan' : 'Live Scan';
       
@@ -65,8 +41,7 @@ const createAlertIfNeeded = async (reportId: string, scanType: string) => {
       if (alertError) {
         console.error('Error creating alert:', alertError);
       } else if (report.infestation_level === 'HIGH') {
-        // Show simulated n8n workflow notification for HIGH severity alerts
-        toast.info('⚡ Simulated: SMS notification triggered via n8n workflow.', {
+        toast.info('SMS notification triggered via n8n workflow.', {
           duration: 5000,
         });
       }
@@ -86,16 +61,6 @@ const Upload = () => {
   const [spotCheckPreviews, setSpotCheckPreviews] = useState<string[]>([]);
   const [dronePreviews, setDronePreviews] = useState<string[]>([]);
   
-  // Browser-based detection state
-  const [useBrowserDetection, setUseBrowserDetection] = useState(true);
-  const [browserDetectionReady, setBrowserDetectionReady] = useState(false);
-  const [modelLoadProgress, setModelLoadProgress] = useState(0);
-  const [isLoadingModel, setIsLoadingModel] = useState(false);
-  const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null);
-  const [modelCached, setModelCached] = useState(false);
-  const [isDownloadingModel, setIsDownloadingModel] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelSize>(getSelectedModelSize());
-  
   // Live Scan state
   const [liveScanActive, setLiveScanActive] = useState(false);
   const [liveScanLoading, setLiveScanLoading] = useState(false);
@@ -107,144 +72,37 @@ const Upload = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
-  
-  // Check WebGPU support and cache status on mount
-  useEffect(() => {
-    checkWebGPUSupport().then(supported => {
-      setWebGPUSupported(supported);
-      console.log('WebGPU supported:', supported);
-    });
-    setModelCached(isModelCached());
-  }, []);
-  
-  // Auto-load tiny model immediately (only 10MB), or cached model
-  useEffect(() => {
-    const shouldAutoLoad = useBrowserDetection && !browserDetectionReady && !isLoadingModel;
-    const isTinyModel = selectedModel === 'tiny';
-    
-    if (shouldAutoLoad && (modelCached || isTinyModel)) {
-      setIsLoadingModel(true);
-      initializePestDetector((progress) => {
-        setModelLoadProgress(progress);
-      }).then((success) => {
-        setBrowserDetectionReady(success);
-        setIsLoadingModel(false);
-        if (success) {
-          setModelCached(true);
-          toast.success(modelCached ? "AI model loaded from cache!" : "AI model ready!");
-        }
-      }).catch(() => {
-        setIsLoadingModel(false);
-        setModelCached(false);
-      });
-    }
-  }, [useBrowserDetection, browserDetectionReady, isLoadingModel, modelCached, selectedModel]);
+  const spotCheckInputRef = useRef<HTMLInputElement | null>(null);
+  const droneInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Handle model size change
-  const handleModelChange = (size: ModelSize) => {
-    setSelectedModel(size);
-    setSelectedModelSize(size);
-    setModelCached(false);
-    setBrowserDetectionReady(false);
-    toast.info(`Switched to ${MODEL_OPTIONS[size].name} model`);
-  };
-
-  // Manual model download function
-  const handleDownloadModel = async () => {
-    setIsDownloadingModel(true);
-    setModelLoadProgress(0);
-    
-    try {
-      const success = await downloadAndCacheModel((progress) => {
-        setModelLoadProgress(progress);
-      });
-      
-      if (success) {
-        setModelCached(true);
-        setBrowserDetectionReady(true);
-        toast.success("AI model downloaded! You can now analyze offline.");
-      } else {
-        toast.error("Failed to download model. Check your connection.");
-      }
-    } catch (error) {
-      console.error('Model download error:', error);
-      toast.error("Download failed. Try again later.");
-    } finally {
-      setIsDownloadingModel(false);
+  // Remove a file from spot check
+  const removeSpotCheckFile = (index: number) => {
+    URL.revokeObjectURL(spotCheckPreviews[index]);
+    setSpotCheckFiles(prev => prev.filter((_, i) => i !== index));
+    setSpotCheckPreviews(prev => prev.filter((_, i) => i !== index));
+    // Reset file input
+    if (spotCheckInputRef.current) {
+      spotCheckInputRef.current.value = '';
     }
   };
 
-  // Helper function for browser-based detection and saving to DB
-  const processBrowserDetection = async (file: File, scanType: string): Promise<string> => {
-    // Run browser detection
-    const result = await detectPestInBrowser(file, (status) => {
-      toast.info(status);
-    });
-    
-    console.log('Browser detection result:', result);
-    
-    // Upload image to storage
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('crop-scans')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+  // Remove a file from drone files
+  const removeDroneFile = (index: number) => {
+    URL.revokeObjectURL(dronePreviews[index]);
+    setDroneFiles(prev => prev.filter((_, i) => i !== index));
+    setDronePreviews(prev => prev.filter((_, i) => i !== index));
+    // Reset file input
+    if (droneInputRef.current) {
+      droneInputRef.current.value = '';
     }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('crop-scans')
-      .getPublicUrl(filePath);
-
-    // Get farm ID
-    const { data: farmData } = await supabase
-      .from('farms')
-      .select('id')
-      .eq('farmer_id', user?.id)
-      .single();
-
-    if (!farmData) {
-      throw new Error('No farm found for user');
-    }
-
-    // Save to database
-    const { data: reportData, error: insertError } = await supabase
-      .from('analysis_reports')
-      .insert({
-        farm_id: farmData.id,
-        scan_type: scanType,
-        image_url: publicUrl,
-        media_type: 'image',
-        infestation_level: result.infestationLevel,
-        confidence_score: result.confidence,
-        pest_types: result.pestTypes,
-        analyzed_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      throw new Error(`Failed to save report: ${insertError.message}`);
-    }
-
-    return reportData.id;
   };
 
   // Live Scan functions
   const startCamera = async () => {
     try {
       setCameraError(null);
-      console.log('Requesting camera access...');
-      
-      // Show video element first
       setLiveScanActive(true);
       
-      // Wait for next render cycle to ensure video element is in DOM
       await new Promise(resolve => setTimeout(resolve, 100));
       
       if (!videoRef.current) {
@@ -259,54 +117,30 @@ const Upload = () => {
         } 
       });
       
-      console.log('Camera access granted, stream obtained');
       streamRef.current = stream;
-      
       const videoElement = videoRef.current;
-      
-      // Set srcObject
       videoElement.srcObject = stream;
-      console.log('Stream assigned to video element');
       
-      // Wait for metadata to load
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Video loading timeout'));
         }, 10000);
         
         videoElement.onloadedmetadata = () => {
-          console.log('Video metadata loaded', {
-            width: videoElement.videoWidth,
-            height: videoElement.videoHeight
-          });
           clearTimeout(timeout);
           resolve();
         };
       });
       
-      // Explicitly play the video
-      console.log('Attempting to play video...');
       await videoElement.play();
-      console.log('Video playing successfully');
-      
-      // Wait for first frame
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Verify video is ready
       if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
         throw new Error('Video dimensions are invalid');
       }
       
-      console.log('Camera ready with dimensions:', {
-        width: videoElement.videoWidth,
-        height: videoElement.videoHeight
-      });
-      
       toast.success("Camera ready");
     } catch (error) {
-      console.error('Camera initialization error:', error);
-      
-      // Clean up on error
       setLiveScanActive(false);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -335,12 +169,10 @@ const Upload = () => {
 
     setLiveScanLoading(true);
     try {
-      // Verify video is ready with valid dimensions
       if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
         throw new Error('Video stream not ready. Please wait a moment and try again.');
       }
 
-      // Create canvas to capture frame
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -349,7 +181,6 @@ const Upload = () => {
       
       ctx.drawImage(videoRef.current, 0, 0);
       
-      // Convert canvas to blob
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((b) => {
           if (b) resolve(b);
@@ -357,10 +188,7 @@ const Upload = () => {
         }, 'image/jpeg', 0.95);
       });
 
-      // Create file from blob
       const file = new File([blob], `live-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
-
-      // Upload to storage
       const fileExt = 'jpg';
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
@@ -373,12 +201,10 @@ const Upload = () => {
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('crop-scans')
         .getPublicUrl(filePath);
 
-      // Call detection edge function
       const { data, error } = await supabase.functions.invoke('detect-pest', {
         body: { 
           imageUrl: publicUrl,
@@ -391,11 +217,8 @@ const Upload = () => {
       }
 
       toast.success(`Detection complete! Found ${data.detectionsCount || data.detections?.length || 0} pest(s)`);
-      
-      // Create alert if high/medium infestation detected
       await createAlertIfNeeded(data.reportId, 'live_scan');
       
-      // Stop camera and redirect
       stopCamera();
       navigate(`/farmer/report/${data.reportId}`);
     } catch (error) {
@@ -435,7 +258,6 @@ const Upload = () => {
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       
-      // Start timer
       recordingTimerRef.current = window.setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
@@ -462,11 +284,9 @@ const Upload = () => {
 
   const uploadRecordedVideo = async () => {
     try {
-      // Create video blob
       const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const videoFile = new File([videoBlob], `live-scan-${Date.now()}.webm`, { type: 'video/webm' });
 
-      // Upload to storage
       const fileName = `${Math.random()}.webm`;
       const filePath = `${fileName}`;
 
@@ -478,12 +298,10 @@ const Upload = () => {
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('crop-scans')
         .getPublicUrl(filePath);
 
-      // Call detection edge function
       const { data, error } = await supabase.functions.invoke('detect-pest', {
         body: { 
           imageUrl: publicUrl,
@@ -496,11 +314,8 @@ const Upload = () => {
       }
 
       toast.success(`Detection complete! Found ${data.detectionsCount || data.detections?.length || 0} pest(s)`);
-      
-      // Create alert if high/medium infestation detected
       await createAlertIfNeeded(data.reportId, 'live_scan');
       
-      // Stop camera and redirect
       stopCamera();
       navigate(`/farmer/report/${data.reportId}`);
     } catch (error) {
@@ -535,26 +350,10 @@ const Upload = () => {
       toast.info(`Processing ${spotCheckFiles.length} file(s)...`);
       const reportIds: string[] = [];
       
-      // Process all files
       for (let i = 0; i < spotCheckFiles.length; i++) {
         const file = spotCheckFiles[i];
         toast.info(`Processing file ${i + 1} of ${spotCheckFiles.length}...`);
         
-        // Use browser detection if enabled and ready
-        if (useBrowserDetection && browserDetectionReady && file.type.startsWith('image/')) {
-          try {
-            const reportId = await processBrowserDetection(file, 'spot_check');
-            reportIds.push(reportId);
-            await createAlertIfNeeded(reportId, 'spot_check');
-            toast.success(`Analyzed in ${(performance.now() / 1000).toFixed(1)}s (Browser AI)`);
-            continue;
-          } catch (browserError) {
-            console.warn('Browser detection failed, falling back to server:', browserError);
-            toast.info('Falling back to server detection...');
-          }
-        }
-        
-        // Server-side detection (fallback or for non-images)
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
@@ -609,19 +408,14 @@ const Upload = () => {
       toast.info(`Processing ${droneFiles.length} file(s)...`);
       const reportIds: string[] = [];
       
-      // Process all files
       for (let i = 0; i < droneFiles.length; i++) {
         const file = droneFiles[i];
         toast.info(`Processing file ${i + 1} of ${droneFiles.length}...`);
         
-        console.log('Starting drone flight upload for file:', file.name, 'Size:', file.size, 'Type:', file.type);
-        
-        // Upload file to storage
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
 
-        console.log('Uploading to storage:', filePath);
         const { error: uploadError } = await supabase.storage
           .from('crop-scans')
           .upload(filePath, file, {
@@ -631,24 +425,14 @@ const Upload = () => {
           });
 
         if (uploadError) {
-          console.error('Storage upload error:', uploadError);
           throw new Error(`Upload failed for ${file.name}: ${uploadError.message}`);
         }
 
-        console.log('File uploaded successfully, getting public URL');
-        
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('crop-scans')
           .getPublicUrl(filePath);
 
-        console.log('Public URL obtained:', publicUrl);
-        console.log('Calling detect-pest edge function...');
-
-        // Call detection edge function with extended timeout for videos
         const isVideo = file.type.startsWith('video/');
-        
-        // Show different messages for video vs image
         if (isVideo) {
           toast.info('Processing video... This may take up to 5 minutes for longer videos.');
         }
@@ -660,10 +444,7 @@ const Upload = () => {
           }
         });
 
-        console.log('Edge function response:', { data, error });
-
         if (error) {
-          console.error('Edge function error:', error);
           throw new Error(`Detection failed for ${file.name}: ${error.message}`);
         }
 
@@ -672,14 +453,10 @@ const Upload = () => {
         }
 
         reportIds.push(data.reportId);
-        
-        // Create alert if high/medium infestation detected
         await createAlertIfNeeded(data.reportId, 'drone_flight');
       }
 
       toast.success(`All ${droneFiles.length} file(s) processed successfully!`);
-      
-      // Navigate to the first report
       navigate(`/farmer/report/${reportIds[0]}`);
     } catch (error) {
       console.error('Error during drone flight analysis:', error);
@@ -693,122 +470,7 @@ const Upload = () => {
   return (
     <Layout>
       <div className="p-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <h1 className="text-3xl font-bold text-foreground">Scan for Pests</h1>
-          
-          {/* Detection Mode Toggle */}
-          <Card className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                {useBrowserDetection ? (
-                  <Cpu className="h-5 w-5 text-primary" />
-                ) : (
-                  <Cloud className="h-5 w-5 text-muted-foreground" />
-                )}
-                <div>
-                  <Label htmlFor="detection-mode" className="font-medium">
-                    {useBrowserDetection ? "Browser AI" : "Server AI"}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {useBrowserDetection 
-                      ? browserDetectionReady 
-                        ? "Instant detection, works offline" 
-                        : modelCached
-                          ? isLoadingModel
-                            ? "Loading from cache..." 
-                            : "Model cached, ready to load"
-                          : "Download model first (one-time)"
-                      : "Uses external AI server"
-                    }
-                  </p>
-                </div>
-              </div>
-              <Switch
-                id="detection-mode"
-                checked={useBrowserDetection}
-                onCheckedChange={setUseBrowserDetection}
-              />
-            </div>
-            
-            {/* Model Selection and Download - shown when browser detection enabled */}
-            {useBrowserDetection && !browserDetectionReady && (
-              <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-dashed space-y-3">
-                {/* Model Size Selector */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Select Model Size</Label>
-                  <Select value={selectedModel} onValueChange={(v) => handleModelChange(v as ModelSize)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(MODEL_OPTIONS) as ModelSize[]).map((key) => (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex flex-col items-start">
-                            <span>{MODEL_OPTIONS[key].name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {MODEL_OPTIONS[selectedModel].description}
-                  </p>
-                </div>
-                
-                {/* Download Button */}
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">Download AI Model</p>
-                    <p className="text-xs text-muted-foreground">
-                      {MODEL_OPTIONS[selectedModel].size} download, works offline forever
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={handleDownloadModel} 
-                    disabled={isDownloadingModel}
-                    size="sm"
-                  >
-                    {isDownloadingModel ? (
-                      <>Downloading...</>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {isDownloadingModel && (
-                  <div>
-                    <Progress value={modelLoadProgress} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1 text-center">
-                      {modelLoadProgress}% - Please wait, downloading model...
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Loading from cache indicator */}
-            {isLoadingModel && modelCached && (
-              <div className="mt-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Zap className="h-4 w-4 text-primary animate-pulse" />
-                  <span className="text-xs text-muted-foreground">Loading from cache...</span>
-                </div>
-                <Progress value={modelLoadProgress} className="h-2" />
-              </div>
-            )}
-            
-            {/* Ready indicator */}
-            {browserDetectionReady && useBrowserDetection && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                <CheckCircle className="h-3 w-3" />
-                <span>Ready! {webGPUSupported ? "WebGPU accelerated" : "WASM mode"} · Offline capable</span>
-              </div>
-            )}
-          </Card>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground mb-6">Scan for Pests</h1>
         
         {/* Live Scan Section */}
         <Card className="mb-6">
@@ -916,14 +578,15 @@ const Upload = () => {
                     Upload Images/Videos (Multiple)
                   </label>
                   <Input
+                    ref={spotCheckInputRef}
                     type="file"
                     accept="image/*,video/*"
                     multiple
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []);
-                      setSpotCheckFiles(files);
+                      setSpotCheckFiles(prev => [...prev, ...files]);
                       const previews = files.map(file => URL.createObjectURL(file));
-                      setSpotCheckPreviews(previews);
+                      setSpotCheckPreviews(prev => [...prev, ...previews]);
                     }}
                     disabled={spotCheckLoading}
                   />
@@ -937,8 +600,17 @@ const Upload = () => {
                     <p className="text-sm font-medium text-foreground">Selected {spotCheckFiles.length} file(s):</p>
                     <div className="grid grid-cols-2 gap-2">
                       {spotCheckFiles.map((file, index) => (
-                        <div key={index} className="space-y-1">
-                          <p className="text-xs text-muted-foreground truncate">{file.name}</p>
+                        <div key={index} className="relative space-y-1 group">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeSpotCheckFile(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                          <p className="text-xs text-muted-foreground truncate pr-6">{file.name}</p>
                           {file.type.startsWith('image/') ? (
                             <img src={spotCheckPreviews[index]} alt={`Preview ${index + 1}`} className="w-full rounded-md" />
                           ) : (
@@ -979,14 +651,15 @@ const Upload = () => {
                     Upload High-Resolution Images/Videos (Multiple)
                   </label>
                   <Input
+                    ref={droneInputRef}
                     type="file"
                     accept="image/*,video/*"
                     multiple
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []);
-                      setDroneFiles(files);
+                      setDroneFiles(prev => [...prev, ...files]);
                       const previews = files.map(file => URL.createObjectURL(file));
-                      setDronePreviews(previews);
+                      setDronePreviews(prev => [...prev, ...previews]);
                     }}
                     disabled={droneLoading}
                   />
@@ -1000,8 +673,17 @@ const Upload = () => {
                     <p className="text-sm font-medium text-foreground">Selected {droneFiles.length} file(s):</p>
                     <div className="grid grid-cols-2 gap-2">
                       {droneFiles.map((file, index) => (
-                        <div key={index} className="space-y-1">
-                          <p className="text-xs text-muted-foreground truncate">{file.name}</p>
+                        <div key={index} className="relative space-y-1 group">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeDroneFile(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                          <p className="text-xs text-muted-foreground truncate pr-6">{file.name}</p>
                           {file.type.startsWith('image/') ? (
                             <img src={dronePreviews[index]} alt={`Preview ${index + 1}`} className="w-full rounded-md" />
                           ) : (
