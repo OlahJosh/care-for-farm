@@ -27,7 +27,9 @@ import {
   Phone,
   User,
   Lock,
-  Package
+  Package,
+  Printer,
+  Download
 } from "lucide-react";
 
 type CheckoutStep = "cart" | "delivery" | "payment" | "confirmation";
@@ -64,6 +66,11 @@ const Checkout = () => {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>("cart");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>("");
+  const [orderDate, setOrderDate] = useState<Date | null>(null);
+  const [confirmedItems, setConfirmedItems] = useState<typeof items>([]);
+  const [confirmedDelivery, setConfirmedDelivery] = useState<DeliveryDetails | null>(null);
+  const [confirmedPayment, setConfirmedPayment] = useState<PaymentDetails | null>(null);
+  const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
   
   const [deliveryDetails, setDeliveryDetails] = useState<DeliveryDetails>({
     fullName: "",
@@ -196,6 +203,13 @@ const Checkout = () => {
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // Store order details before clearing cart
+    setConfirmedItems([...items]);
+    setConfirmedDelivery({ ...deliveryDetails });
+    setConfirmedPayment({ ...paymentDetails });
+    setConfirmedTotal(grandTotal);
+    setOrderDate(new Date());
+    
     // Generate order number
     const newOrderNumber = `FC-${Date.now().toString(36).toUpperCase()}`;
     setOrderNumber(newOrderNumber);
@@ -205,6 +219,125 @@ const Checkout = () => {
     
     setIsProcessing(false);
     toast.success("Order placed successfully!");
+  };
+
+  const handlePrintReceipt = () => {
+    const receiptContent = generateReceiptHTML();
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(receiptContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
+
+  const handleDownloadReceipt = () => {
+    const receiptContent = generateReceiptHTML();
+    const blob = new Blob([receiptContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `FarmCare-Receipt-${orderNumber}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Receipt downloaded");
+  };
+
+  const generateReceiptHTML = () => {
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString("en-NG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    };
+
+    const paymentMethodLabel = confirmedPayment?.method === "card" 
+      ? `Card ending in ${confirmedPayment.cardNumber.slice(-4)}`
+      : confirmedPayment?.method === "bank_transfer" 
+        ? "Bank Transfer" 
+        : "Pay on Delivery";
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FarmCare Receipt - ${orderNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; }
+          .header { text-align: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 20px; }
+          .header h1 { color: #16a34a; margin: 0; font-size: 28px; }
+          .header p { color: #666; margin: 5px 0; }
+          .order-info { background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+          .order-info p { margin: 5px 0; }
+          .section { margin-bottom: 20px; }
+          .section h3 { border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px; color: #374151; }
+          .item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+          .item:last-child { border-bottom: none; }
+          .totals { background: #f0fdf4; padding: 15px; border-radius: 8px; }
+          .totals .row { display: flex; justify-content: space-between; padding: 5px 0; }
+          .totals .total { font-size: 18px; font-weight: bold; color: #16a34a; border-top: 2px solid #16a34a; padding-top: 10px; margin-top: 10px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #666; font-size: 12px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>FarmCare</h1>
+          <p>Order Receipt</p>
+        </div>
+        
+        <div class="order-info">
+          <p><strong>Order Number:</strong> ${orderNumber}</p>
+          <p><strong>Date:</strong> ${orderDate ? formatDate(orderDate) : ""}</p>
+          <p><strong>Payment Method:</strong> ${paymentMethodLabel}</p>
+        </div>
+
+        <div class="section">
+          <h3>Delivery Address</h3>
+          <p><strong>${confirmedDelivery?.fullName}</strong></p>
+          <p>${confirmedDelivery?.phone}</p>
+          <p>${confirmedDelivery?.address}, ${confirmedDelivery?.city}, ${confirmedDelivery?.state}</p>
+          ${confirmedDelivery?.notes ? `<p><em>Note: ${confirmedDelivery.notes}</em></p>` : ""}
+        </div>
+
+        <div class="section">
+          <h3>Items Ordered</h3>
+          ${confirmedItems.map(item => `
+            <div class="item">
+              <span>${item.name} x ${item.quantity}</span>
+              <span>₦${(item.price * item.quantity).toLocaleString()}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="totals">
+          <div class="row">
+            <span>Subtotal</span>
+            <span>₦${(confirmedTotal - deliveryFee).toLocaleString()}</span>
+          </div>
+          <div class="row">
+            <span>Delivery Fee</span>
+            <span>₦${deliveryFee.toLocaleString()}</span>
+          </div>
+          <div class="row total">
+            <span>Total</span>
+            <span>₦${confirmedTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Thank you for shopping with FarmCare!</p>
+          <p>For inquiries, contact us at support@farmcare.com</p>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const formatCardNumber = (value: string) => {
@@ -526,7 +659,17 @@ const Checkout = () => {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               You will receive an SMS confirmation shortly. The seller will contact you to arrange delivery.
             </p>
-            <div className="pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+              <Button variant="outline" onClick={handlePrintReceipt}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Receipt
+              </Button>
+              <Button variant="outline" onClick={handleDownloadReceipt}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Receipt
+              </Button>
+            </div>
+            <div className="pt-2">
               <Button onClick={() => navigate("/farm-store")} size="lg">
                 Continue Shopping
               </Button>
