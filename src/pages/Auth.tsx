@@ -469,7 +469,7 @@ const Auth = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone-role">I am a</Label>
+            <Label htmlFor="phone-role">Select Role</Label>
             <Select value={phoneRole} onValueChange={(value: "farmer" | "agronomist") => setPhoneRole(value)}>
               <SelectTrigger className="h-12">
                 <SelectValue />
@@ -789,7 +789,7 @@ const Auth = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="signup-role">I am a</Label>
+          <Label htmlFor="signup-role">Select Role</Label>
           <Select value={role} onValueChange={(value: "farmer" | "agronomist") => setRole(value)}>
             <SelectTrigger className="h-12">
               <SelectValue />
