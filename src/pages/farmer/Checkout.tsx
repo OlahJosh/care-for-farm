@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,8 +41,37 @@ interface DeliveryDetails {
   address: string;
   city: string;
   state: string;
+  postalCode: string;
+  country: string;
   notes: string;
 }
+
+const COUNTRIES = [
+  { code: "NG", name: "Nigeria" },
+  { code: "GH", name: "Ghana" },
+  { code: "KE", name: "Kenya" },
+  { code: "ZA", name: "South Africa" },
+  { code: "TZ", name: "Tanzania" },
+  { code: "UG", name: "Uganda" },
+  { code: "ET", name: "Ethiopia" },
+  { code: "EG", name: "Egypt" },
+  { code: "CM", name: "Cameroon" },
+  { code: "CI", name: "Côte d'Ivoire" },
+  { code: "SN", name: "Senegal" },
+  { code: "ZM", name: "Zambia" },
+  { code: "ZW", name: "Zimbabwe" },
+  { code: "RW", name: "Rwanda" },
+  { code: "BJ", name: "Benin" },
+  { code: "TG", name: "Togo" },
+  { code: "ML", name: "Mali" },
+  { code: "NE", name: "Niger" },
+  { code: "BF", name: "Burkina Faso" },
+  { code: "MW", name: "Malawi" },
+  { code: "MZ", name: "Mozambique" },
+  { code: "AO", name: "Angola" },
+  { code: "CD", name: "DR Congo" },
+  { code: "SD", name: "Sudan" },
+];
 
 interface PaymentDetails {
   method: "card" | "bank_transfer" | "pay_on_delivery";
@@ -78,6 +108,8 @@ const Checkout = () => {
     address: "",
     city: "",
     state: "",
+    postalCode: "",
+    country: "NG",
     notes: "",
   });
   
@@ -302,7 +334,9 @@ const Checkout = () => {
           <h3>Delivery Address</h3>
           <p><strong>${confirmedDelivery?.fullName}</strong></p>
           <p>${confirmedDelivery?.phone}</p>
-          <p>${confirmedDelivery?.address}, ${confirmedDelivery?.city}, ${confirmedDelivery?.state}</p>
+          <p>${confirmedDelivery?.address}</p>
+          <p>${confirmedDelivery?.city}, ${confirmedDelivery?.state} ${confirmedDelivery?.postalCode || ""}</p>
+          <p>${COUNTRIES.find(c => c.code === confirmedDelivery?.country)?.name || confirmedDelivery?.country}</p>
           ${confirmedDelivery?.notes ? `<p><em>Note: ${confirmedDelivery.notes}</em></p>` : ""}
         </div>
 
@@ -497,13 +531,42 @@ const Checkout = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="state">State *</Label>
+              <Label htmlFor="state">State/Province *</Label>
               <Input
                 id="state"
                 value={deliveryDetails.state}
                 onChange={(e) => setDeliveryDetails(prev => ({ ...prev, state: e.target.value }))}
-                placeholder="Enter state"
+                placeholder="Enter state or province"
               />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postal/ZIP Code</Label>
+              <Input
+                id="postalCode"
+                value={deliveryDetails.postalCode}
+                onChange={(e) => setDeliveryDetails(prev => ({ ...prev, postalCode: e.target.value }))}
+                placeholder="Enter postal code"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country *</Label>
+              <Select
+                value={deliveryDetails.country}
+                onValueChange={(value) => setDeliveryDetails(prev => ({ ...prev, country: value }))}
+              >
+                <SelectTrigger id="country">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country.code} value={country.code}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
@@ -727,7 +790,11 @@ const Checkout = () => {
               </p>
               <p className="flex items-start gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5" />
-                <span>{deliveryDetails.address}, {deliveryDetails.city}, {deliveryDetails.state}</span>
+                <span>
+                  {deliveryDetails.address}, {deliveryDetails.city}, {deliveryDetails.state} {deliveryDetails.postalCode}
+                  <br />
+                  {COUNTRIES.find(c => c.code === deliveryDetails.country)?.name || deliveryDetails.country}
+                </span>
               </p>
               {deliveryDetails.notes && (
                 <p className="text-sm italic text-muted-foreground">Note: {deliveryDetails.notes}</p>
