@@ -237,7 +237,7 @@ const Profile = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Your CropGuard ID</CardTitle>
+              <CardTitle>Your FarmCare ID</CardTitle>
               <CardDescription>Use this ID to login or for ESP32/IoT integration</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
