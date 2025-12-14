@@ -12,7 +12,36 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Eye, EyeOff, Phone, Mail, ArrowLeft } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import farmcareLogo from "/farmcare-logo.png";
+
+// Country codes for phone authentication
+const countryCodes = [
+  { code: "+234", country: "Nigeria", flag: "🇳🇬" },
+  { code: "+254", country: "Kenya", flag: "🇰🇪" },
+  { code: "+233", country: "Ghana", flag: "🇬🇭" },
+  { code: "+27", country: "South Africa", flag: "🇿🇦" },
+  { code: "+256", country: "Uganda", flag: "🇺🇬" },
+  { code: "+255", country: "Tanzania", flag: "🇹🇿" },
+  { code: "+251", country: "Ethiopia", flag: "🇪🇹" },
+  { code: "+20", country: "Egypt", flag: "🇪🇬" },
+  { code: "+212", country: "Morocco", flag: "🇲🇦" },
+  { code: "+237", country: "Cameroon", flag: "🇨🇲" },
+  { code: "+225", country: "Ivory Coast", flag: "🇨🇮" },
+  { code: "+221", country: "Senegal", flag: "🇸🇳" },
+  { code: "+263", country: "Zimbabwe", flag: "🇿🇼" },
+  { code: "+260", country: "Zambia", flag: "🇿🇲" },
+  { code: "+265", country: "Malawi", flag: "🇲🇼" },
+  { code: "+250", country: "Rwanda", flag: "🇷🇼" },
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+1", country: "USA/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "United Kingdom", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+55", country: "Brazil", flag: "🇧🇷" },
+];
 
 type AuthMethod = "email" | "phone";
 type PhoneAuthStep = "phone" | "otp" | "profile";
@@ -42,6 +71,7 @@ const Auth = () => {
   
   // Phone auth states
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [countryCode, setCountryCode] = useState("+234");
   const [otpCode, setOtpCode] = useState("");
   const [phoneAuthStep, setPhoneAuthStep] = useState<PhoneAuthStep>("phone");
   const [isNewUser, setIsNewUser] = useState(false);
@@ -68,16 +98,13 @@ const Auth = () => {
   };
 
   // Format phone for Supabase (needs +country code)
-  const formatPhoneForSupabase = (phone: string) => {
+  const formatPhoneForSupabase = (phone: string, code: string) => {
     const cleaned = phone.replace(/\D/g, "");
-    // Default to Nigeria country code if not starting with country code
-    if (!cleaned.startsWith("234") && cleaned.length === 10) {
-      return `+234${cleaned}`;
-    }
-    if (!cleaned.startsWith("+")) {
-      return `+${cleaned}`;
-    }
-    return cleaned;
+    return `${code}${cleaned}`;
+  };
+
+  const getSelectedCountry = () => {
+    return countryCodes.find(c => c.code === countryCode) || countryCodes[0];
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -184,7 +211,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const formattedPhone = formatPhoneForSupabase(phoneNumber);
+      const formattedPhone = formatPhoneForSupabase(phoneNumber, countryCode);
       const { error } = await supabase.auth.signInWithOtp({
         phone: formattedPhone,
       });
@@ -211,7 +238,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const formattedPhone = formatPhoneForSupabase(phoneNumber);
+      const formattedPhone = formatPhoneForSupabase(phoneNumber, countryCode);
       const { data, error } = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token: otpCode,
@@ -290,7 +317,7 @@ const Auth = () => {
         .from("profiles")
         .update({
           full_name: phoneFullName,
-          phone: formatPhoneForSupabase(phoneNumber),
+          phone: formatPhoneForSupabase(phoneNumber, countryCode),
         })
         .eq("id", currentUser.id);
 
@@ -313,6 +340,7 @@ const Auth = () => {
   const resetPhoneAuth = () => {
     setPhoneAuthStep("phone");
     setOtpCode("");
+    setCountryCode("+234");
     setIsNewUser(false);
     setPhoneFullName("");
     setPhoneRole("farmer");
@@ -339,7 +367,7 @@ const Auth = () => {
             <p className="text-sm text-muted-foreground">
               Enter the 6-digit code sent to
             </p>
-            <p className="font-medium">{formatPhoneForSupabase(phoneNumber)}</p>
+            <p className="font-medium">{formatPhoneForSupabase(phoneNumber, countryCode)}</p>
           </div>
 
           <div className="flex justify-center py-4">
@@ -442,15 +470,32 @@ const Auth = () => {
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
           <div className="flex gap-2">
-            <div className="flex items-center px-3 bg-muted rounded-md border border-input text-sm">
-              +234
-            </div>
+            <Select value={countryCode} onValueChange={setCountryCode}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue>
+                  {getSelectedCountry().flag} {countryCode}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <ScrollArea className="h-[200px]">
+                  {countryCodes.map((country) => (
+                    <SelectItem key={country.code} value={country.code}>
+                      <span className="flex items-center gap-2">
+                        <span>{country.flag}</span>
+                        <span>{country.code}</span>
+                        <span className="text-muted-foreground text-xs">{country.country}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
             <Input
               id="phone"
               type="tel"
               placeholder="803 123 4567"
               value={formatPhoneDisplay(phoneNumber)}
-              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 15))}
               required
               className="flex-1"
             />
