@@ -24,7 +24,8 @@ import {
   Zap,
   Eye,
   Brain,
-  Mail
+  Mail,
+  Phone
 } from "lucide-react";
 
 const Landing = () => {
@@ -346,9 +347,9 @@ const Landing = () => {
                 Smart Agricultural Intelligence. Protecting harvests with AI-powered technology.
               </p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                <a href="mailto:farmcareintl@gmail.com" className="hover:text-primary">
-                  farmcareintl@gmail.com
+                <Phone className="h-4 w-4" />
+                <a href="tel:+2349024324733" className="hover:text-primary">
+                  +234 902 432 4733
                 </a>
               </div>
             </div>
