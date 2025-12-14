@@ -27,6 +27,8 @@ import UserManagement from "./pages/admin/UserManagement";
 import AnalysisReview from "./pages/admin/AnalysisReview";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import HelpCenter from "./pages/HelpCenter";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +63,8 @@ const App = () => (
             <Route path="/admin/analysis" element={<ProtectedRoute allowedRoles={["agronomist"]}><AnalysisReview /></ProtectedRoute>} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/help" element={<HelpCenter />} />
+            <Route path="/about" element={<About />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

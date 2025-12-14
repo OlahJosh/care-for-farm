@@ -22,7 +22,8 @@ import {
   Target,
   Zap,
   Eye,
-  Brain
+  Brain,
+  Mail
 } from "lucide-react";
 
 const Landing = () => {
@@ -328,17 +329,105 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12 bg-card">
+      <footer className="border-t border-border py-16 bg-card">
         <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
-              <span className="text-xl font-bold text-foreground">FarmCare</span>
-              <span className="text-sm text-muted-foreground">Smart Agricultural Intelligence</span>
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-3 mb-4">
+                <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
+                <span className="text-xl font-bold text-foreground">FarmCare</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Smart Agricultural Intelligence. Protecting harvests with AI-powered technology.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Mail className="h-4 w-4" />
+                <a href="mailto:farmcareintl@gmail.com" className="hover:text-primary">
+                  farmcareintl@gmail.com
+                </a>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              &copy; 2025 FarmCare. Protecting harvests with intelligent technology.
-            </p>
+
+            {/* Company */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Company</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/about" className="text-sm text-muted-foreground hover:text-primary">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/help" className="text-sm text-muted-foreground hover:text-primary">
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary">
+                    Get Started
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Legal</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary">
+                    Privacy Policy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Support</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/help" className="text-sm text-muted-foreground hover:text-primary">
+                    FAQ
+                  </Link>
+                </li>
+                <li>
+                  <a href="mailto:farmcareintl@gmail.com" className="text-sm text-muted-foreground hover:text-primary">
+                    Email Support
+                  </a>
+                </li>
+                <li>
+                  <Link to="/help" className="text-sm text-muted-foreground hover:text-primary">
+                    Submit a Ticket
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                &copy; 2025 FarmCare. All rights reserved.
+              </p>
+              <div className="flex items-center gap-6">
+                <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary">
+                  Terms
+                </Link>
+                <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary">
+                  Privacy
+                </Link>
+                <Link to="/help" className="text-sm text-muted-foreground hover:text-primary">
+                  Contact
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
