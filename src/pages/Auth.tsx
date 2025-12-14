@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Eye, EyeOff, Phone, Mail, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Phone, Mail, ArrowLeft, User, Lock } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import farmcareLogo from "/farmcare-logo.png";
@@ -44,6 +43,7 @@ const countryCodes = [
 ];
 
 type AuthMethod = "email" | "phone";
+type AuthMode = "login" | "signup";
 type PhoneAuthStep = "phone" | "otp" | "profile";
 
 const Auth = () => {
@@ -51,31 +51,27 @@ const Auth = () => {
   const { user, userRole } = useAuth();
   const [loading, setLoading] = useState(false);
   
-  // Auth method toggle
+  // Auth method and mode
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   
   // Email auth states
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
-  const [signupFullName, setSignupFullName] = useState("");
-  const [signupRole, setSignupRole] = useState<"farmer" | "agronomist">("farmer");
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<"farmer" | "agronomist">("farmer");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
-  const [emailMode, setEmailMode] = useState<"login" | "signup">("login");
   
   // Phone auth states
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+234");
   const [otpCode, setOtpCode] = useState("");
   const [phoneAuthStep, setPhoneAuthStep] = useState<PhoneAuthStep>("phone");
-  const [isNewUser, setIsNewUser] = useState(false);
   const [phoneFullName, setPhoneFullName] = useState("");
   const [phoneRole, setPhoneRole] = useState<"farmer" | "agronomist">("farmer");
   const [phoneAgreeToTerms, setPhoneAgreeToTerms] = useState(false);
@@ -115,8 +111,8 @@ const Auth = () => {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
+        email: email,
+        password: password,
       });
       if (error) throw error;
       toast.success("Welcome back!");
@@ -168,12 +164,12 @@ const Auth = () => {
       return;
     }
 
-    if (signupPassword !== signupConfirmPassword) {
+    if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    if (signupPassword.length < 6) {
+    if (password.length < 6) {
       toast.error("Password must be at least 6 characters long");
       return;
     }
@@ -182,12 +178,12 @@ const Auth = () => {
 
     try {
       const { error } = await supabase.auth.signUp({
-        email: signupEmail,
-        password: signupPassword,
+        email: email,
+        password: password,
         options: {
           data: {
-            full_name: signupFullName,
-            role: signupRole,
+            full_name: fullName,
+            role: role,
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -266,7 +262,6 @@ const Auth = () => {
 
         if (!profileData?.full_name) {
           // New user - needs to complete profile
-          setIsNewUser(true);
           setPhoneAuthStep("profile");
         } else {
           // Existing user - redirect
@@ -349,24 +344,65 @@ const Auth = () => {
   const resetPhoneAuth = () => {
     setPhoneAuthStep("phone");
     setOtpCode("");
-    setCountryCode("+234");
-    setIsNewUser(false);
     setPhoneFullName("");
     setPhoneRole("farmer");
     setPhoneAgreeToTerms(false);
-    setPhoneSupported(true);
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setFullName("");
+    setRole("farmer");
+    setAgreeToTerms(false);
+    setShowForgotPassword(false);
+    resetPhoneAuth();
+  };
+
+  const switchAuthMethod = () => {
+    resetForm();
+    setAuthMethod(authMethod === "email" ? "phone" : "email");
+  };
+
+  const switchAuthMode = () => {
+    resetForm();
+    setAuthMode(authMode === "login" ? "signup" : "login");
+  };
+
+  // Get page title and description
+  const getTitle = () => {
+    if (authMethod === "phone") {
+      if (phoneAuthStep === "otp") return "Verify OTP";
+      if (phoneAuthStep === "profile") return "Complete Profile";
+      return authMode === "login" ? "Welcome Back" : "Create Account";
+    }
+    if (showForgotPassword) return "Reset Password";
+    return authMode === "login" ? "Welcome Back" : "Create Account";
+  };
+
+  const getDescription = () => {
+    if (authMethod === "phone") {
+      if (phoneAuthStep === "otp") return "Enter the code sent to your phone";
+      if (phoneAuthStep === "profile") return "Just a few more details to get started";
+      return "Use your phone number to continue";
+    }
+    if (showForgotPassword) return "Enter your email to receive a reset link";
+    return authMode === "login" 
+      ? "Sign in to access your farm dashboard" 
+      : "Join FarmCare to protect your crops";
   };
 
   // Render phone auth content based on step
   const renderPhoneAuth = () => {
     if (phoneAuthStep === "otp") {
       return (
-        <form onSubmit={handleVerifyOTP} className="space-y-4">
+        <form onSubmit={handleVerifyOTP} className="space-y-6">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="mb-2 -ml-2"
+            className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
             onClick={resetPhoneAuth}
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -377,7 +413,7 @@ const Auth = () => {
             <p className="text-sm text-muted-foreground">
               Enter the 6-digit code sent to
             </p>
-            <p className="font-medium">{formatPhoneForSupabase(phoneNumber, countryCode)}</p>
+            <p className="font-medium text-foreground">{formatPhoneForSupabase(phoneNumber, countryCode)}</p>
           </div>
 
           <div className="flex justify-center py-4">
@@ -397,49 +433,45 @@ const Auth = () => {
             </InputOTP>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading || otpCode.length !== 6}>
+          <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading || otpCode.length !== 6}>
             {loading ? "Verifying..." : "Verify OTP"}
           </Button>
 
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            className="w-full"
+            className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
             onClick={handleSendOTP}
             disabled={loading}
           >
-            Resend OTP
-          </Button>
+            Didn't receive code? <span className="text-primary font-medium">Resend OTP</span>
+          </button>
         </form>
       );
     }
 
     if (phoneAuthStep === "profile") {
       return (
-        <form onSubmit={handleCompleteProfile} className="space-y-4">
-          <div className="text-center mb-4">
-            <h3 className="font-semibold">Complete Your Profile</h3>
-            <p className="text-sm text-muted-foreground">
-              Just a few more details to get started
-            </p>
-          </div>
-
+        <form onSubmit={handleCompleteProfile} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="phone-name">Full Name</Label>
-            <Input
-              id="phone-name"
-              type="text"
-              placeholder="John Doe"
-              value={phoneFullName}
-              onChange={(e) => setPhoneFullName(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phone-name"
+                type="text"
+                placeholder="Enter your full name"
+                value={phoneFullName}
+                onChange={(e) => setPhoneFullName(e.target.value)}
+                required
+                className="pl-10 h-12"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone-role">Role</Label>
+            <Label htmlFor="phone-role">I am a</Label>
             <Select value={phoneRole} onValueChange={(value: "farmer" | "agronomist") => setPhoneRole(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-12">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -449,13 +481,14 @@ const Auth = () => {
             </Select>
           </div>
 
-          <div className="flex items-start space-x-2">
+          <div className="flex items-start space-x-3 pt-2">
             <Checkbox
               id="phone-terms"
               checked={phoneAgreeToTerms}
               onCheckedChange={(checked) => setPhoneAgreeToTerms(checked as boolean)}
+              className="mt-0.5"
             />
-            <Label htmlFor="phone-terms" className="text-sm font-normal leading-tight cursor-pointer">
+            <Label htmlFor="phone-terms" className="text-sm font-normal leading-relaxed cursor-pointer text-muted-foreground">
               I agree to the{" "}
               <Link to="/terms" className="text-primary hover:underline" target="_blank">
                 Terms of Service
@@ -467,7 +500,7 @@ const Auth = () => {
             </Label>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading}>
             {loading ? "Completing setup..." : "Complete Setup"}
           </Button>
         </form>
@@ -476,12 +509,12 @@ const Auth = () => {
 
     // Default: phone number entry step
     return (
-      <form onSubmit={handleSendOTP} className="space-y-4">
+      <form onSubmit={handleSendOTP} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
           <div className="flex gap-2">
             <Select value={countryCode} onValueChange={setCountryCode}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[120px] h-12">
                 <SelectValue>
                   {getSelectedCountry().flag} {countryCode}
                 </SelectValue>
@@ -500,294 +533,361 @@ const Auth = () => {
                 </ScrollArea>
               </SelectContent>
             </Select>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="803 123 4567"
-              value={formatPhoneDisplay(phoneNumber)}
-              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 15))}
-              required
-              className="flex-1"
-            />
+            <div className="relative flex-1">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="803 123 4567"
+                value={formatPhoneDisplay(phoneNumber)}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                required
+                className="pl-10 h-12"
+              />
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            We will send a verification code to this number
+            We'll send a verification code to this number
           </p>
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Sending OTP..." : "Send OTP"}
+        <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading}>
+          {loading ? "Sending OTP..." : "Send Verification Code"}
         </Button>
+
+        <div className="text-center pt-2">
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={switchAuthMethod}
+          >
+            {authMode === "login" ? "Sign in" : "Sign up"} with email instead
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  // Render email auth
+  const renderEmailAuth = () => {
+    if (showForgotPassword) {
+      return (
+        <form onSubmit={handleForgotPassword} className="space-y-5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowForgotPassword(false)}
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          
+          <div className="space-y-2">
+            <Label htmlFor="reset-email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="farmer@example.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+                className="pl-10 h-12"
+              />
+            </div>
+          </div>
+          
+          <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading}>
+            {loading ? "Sending..." : "Send Reset Link"}
+          </Button>
+        </form>
+      );
+    }
+
+    if (authMode === "login") {
+      return (
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="login-email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="login-email"
+                type="email"
+                placeholder="farmer@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="pl-10 h-12"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="login-password">Password</Label>
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline"
+                onClick={() => setShowForgotPassword(true)}
+              >
+                Forgot password?
+              </button>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pl-10 pr-10 h-12"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
+          </Button>
+
+          <div className="space-y-3 pt-2">
+            <div className="text-center">
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={switchAuthMode}
+              >
+                Don't have an account? <span className="text-primary font-medium">Sign up</span>
+              </button>
+            </div>
+            
+            {phoneSupported && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={switchAuthMethod}
+                >
+                  Sign in with phone instead
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
+      );
+    }
+
+    // Signup form
+    return (
+      <form onSubmit={handleSignup} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="signup-name">Full Name</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="signup-name"
+              type="text"
+              placeholder="Enter your full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="pl-10 h-12"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="signup-email">Email Address</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="signup-email"
+              type="email"
+              placeholder="farmer@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="pl-10 h-12"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="signup-password">Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="signup-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="pl-10 pr-10 h-12"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="signup-confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              className="pl-10 pr-10 h-12"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="signup-role">I am a</Label>
+          <Select value={role} onValueChange={(value: "farmer" | "agronomist") => setRole(value)}>
+            <SelectTrigger className="h-12">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="farmer">Farmer</SelectItem>
+              <SelectItem value="agronomist">Agronomist</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-start space-x-3 pt-2">
+          <Checkbox
+            id="terms"
+            checked={agreeToTerms}
+            onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+            className="mt-0.5"
+          />
+          <Label htmlFor="terms" className="text-sm font-normal leading-relaxed cursor-pointer text-muted-foreground">
+            I agree to the{" "}
+            <Link to="/terms" className="text-primary hover:underline" target="_blank">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="text-primary hover:underline" target="_blank">
+              Privacy Policy
+            </Link>
+          </Label>
+        </div>
+
+        <Button type="submit" className="w-full h-12 text-base font-medium" disabled={loading}>
+          {loading ? "Creating account..." : "Create Account"}
+        </Button>
+
+        <div className="space-y-3 pt-2">
+          <div className="text-center">
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={switchAuthMode}
+            >
+              Already have an account? <span className="text-primary font-medium">Sign in</span>
+            </button>
+          </div>
+          
+          {phoneSupported && (
+            <div className="text-center">
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={switchAuthMethod}
+              >
+                Sign up with phone instead
+              </button>
+            </div>
+          )}
+        </div>
       </form>
     );
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted/60 p-6">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <img src={farmcareLogo} alt="FarmCare Logo" className="h-12 w-12 rounded-lg" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/30 p-4 sm:p-6">
+      <div className="w-full max-w-md">
+        {/* Logo and header outside card */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src={farmcareLogo} alt="FarmCare Logo" className="h-14 w-14 rounded-xl shadow-md" />
           </div>
-          <p className="text-sm font-semibold text-primary mb-1">FarmCare</p>
-          <CardTitle className="text-3xl">
-            {authMethod === "phone"
-              ? phoneAuthStep === "profile"
-                ? "Complete your profile"
-                : "Sign in with phone"
-              : emailMode === "signup"
-                ? "Create your account"
-                : "Welcome back"}
-          </CardTitle>
-          <CardDescription>
-            {authMethod === "phone"
-              ? "Use your mobile number to access your farm dashboard"
-              : emailMode === "signup"
-                ? "Signing up as a new farmer or agronomist"
-                : "Enter your details to access your farm"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Auth method toggle */}
-          <div className="flex justify-center gap-2 mb-3">
-            <Button
-              variant={authMethod === "email" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setAuthMethod("email");
-                resetPhoneAuth();
-              }}
-              className="flex items-center gap-2"
-            >
-              <Mail className="h-4 w-4" />
-              Email
-            </Button>
-            <Button
-              variant={authMethod === "phone" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAuthMethod("phone")}
-              className="flex items-center gap-2"
-              disabled={!phoneSupported}
-            >
-              <Phone className="h-4 w-4" />
-              Phone
-            </Button>
-          </div>
-          {!phoneSupported && (
-            <p className="text-xs text-center text-destructive mb-4">
-              Phone sign-in is not available yet. Please use email instead.
-            </p>
-          )}
+          <p className="text-sm font-semibold text-primary tracking-wide uppercase">FarmCare</p>
+        </div>
 
-          {authMethod === "phone" ? (
-            renderPhoneAuth()
-          ) : (
-            <Tabs value={emailMode} onValueChange={(value) => setEmailMode(value as "login" | "signup")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
+        <Card className="border-0 shadow-xl bg-card/80 backdrop-blur-sm">
+          <CardHeader className="text-center pb-2 pt-6">
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              {getTitle()}
+            </CardTitle>
+            <CardDescription className="text-base">
+              {getDescription()}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="pt-4 pb-6">
+            {!phoneSupported && authMethod === "phone" && (
+              <p className="text-xs text-center text-destructive mb-4 p-2 bg-destructive/10 rounded-md">
+                Phone sign-in is not available yet. Please use email instead.
+              </p>
+            )}
 
-              <TabsContent value="login">
-                {showForgotPassword ? (
-                  <form onSubmit={handleForgotPassword} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-email">Email</Label>
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        placeholder="farmer@example.com"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Sending..." : "Send Reset Link"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => setShowForgotPassword(false)}
-                    >
-                      Back to Login
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="farmer@example.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        required
-                      />
-                    </div>
+            {authMethod === "phone" ? renderPhoneAuth() : renderEmailAuth()}
+          </CardContent>
+        </Card>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="login-password"
-                          type={showLoginPassword ? "text" : "password"}
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          required
-                          className="pr-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                          onClick={() => setShowLoginPassword(!showLoginPassword)}
-                        >
-                          {showLoginPassword ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="px-0 text-sm"
-                      onClick={() => setShowForgotPassword(true)}
-                    >
-                      Forgot password?
-                    </Button>
-
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign In"}
-                    </Button>
-                  </form>
-                )}
-              </TabsContent>
-
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="John Doe"
-                      value={signupFullName}
-                      onChange={(e) => setSignupFullName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="farmer@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-password"
-                        type={showSignupPassword ? "text" : "password"}
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        className="pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowSignupPassword(!showSignupPassword)}
-                      >
-                        {showSignupPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-confirm-password"
-                        type={showSignupConfirmPassword ? "text" : "password"}
-                        value={signupConfirmPassword}
-                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        className="pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
-                      >
-                        {showSignupConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-role">Role</Label>
-                    <Select value={signupRole} onValueChange={(value: "farmer" | "agronomist") => setSignupRole(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="farmer">Farmer</SelectItem>
-                        <SelectItem value="agronomist">Agronomist</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="terms"
-                      checked={agreeToTerms}
-                      onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal leading-tight cursor-pointer">
-                      I agree to the{" "}
-                      <Link to="/terms" className="text-primary hover:underline" target="_blank">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link to="/privacy" className="text-primary hover:underline" target="_blank">
-                        Privacy Policy
-                      </Link>
-                    </Label>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          )}
-        </CardContent>
-      </Card>
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          By continuing, you agree to FarmCare's Terms of Service and Privacy Policy.
+        </p>
+      </div>
     </div>
   );
 };
