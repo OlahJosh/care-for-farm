@@ -32,28 +32,37 @@ const Sensors = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!isSimulating) return;
+    if (!isSimulating || !farmId) return;
 
-    const interval = setInterval(() => {
-      const newReading: SensorReading = {
-        recorded_at: new Date().toISOString(),
+    const interval = setInterval(async () => {
+      const newReading = {
+        farm_id: farmId,
         soil_moisture: Math.random() * 100,
         temperature: 15 + Math.random() * 20,
         humidity: 40 + Math.random() * 40,
         light_intensity: Math.random() * 1000,
       };
 
-      setSensorData(prev => [...prev.slice(-19), newReading]);
-      setCurrentValues({
-        soil_moisture: newReading.soil_moisture,
-        temperature: newReading.temperature,
-        humidity: newReading.humidity,
-        light_intensity: newReading.light_intensity,
-      });
+      // Save to database so data persists
+      const { data, error } = await supabase
+        .from("sensor_data")
+        .insert(newReading)
+        .select()
+        .single();
+
+      if (!error && data) {
+        setSensorData(prev => [...prev.slice(-19), data]);
+        setCurrentValues({
+          soil_moisture: data.soil_moisture || 0,
+          temperature: data.temperature || 0,
+          humidity: data.humidity || 0,
+          light_intensity: data.light_intensity || 0,
+        });
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isSimulating]);
+  }, [isSimulating, farmId]);
 
 
   const fetchFarmAndData = async () => {
