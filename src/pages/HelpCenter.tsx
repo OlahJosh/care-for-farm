@@ -343,7 +343,7 @@ const HelpCenter = () => {
                 <CardContent className="pt-6 text-center">
                   <Phone className="h-8 w-8 text-primary mx-auto mb-3" />
                   <h4 className="font-medium mb-1">Phone</h4>
-                  <p className="text-sm text-muted-foreground">+234 902 432 4733</p>
+                  <a href="tel:+2349024324733" className="text-sm text-muted-foreground hover:text-primary">+234 902 432 4733</a>
                 </CardContent>
               </Card>
               <Card>
