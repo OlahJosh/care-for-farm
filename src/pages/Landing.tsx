@@ -5,6 +5,7 @@ import heroBackground from "@/assets/hero-farm-background.jpg";
 import farmcareLogo from "/farmcare-logo.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { 
   Shield, 
   BarChart3, 
@@ -38,12 +39,15 @@ const Landing = () => {
             <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
             <h1 className="text-2xl font-bold text-foreground">FarmCare</h1>
           </div>
-          <Link to="/auth">
-            <Button size="lg" className="gap-2">
-              <Zap className="h-4 w-4" />
-              Get Started
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+            <Link to="/auth">
+              <Button size="lg" className="gap-2">
+                <Zap className="h-4 w-4" />
+                Get Started
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
