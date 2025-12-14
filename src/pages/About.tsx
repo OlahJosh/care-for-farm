@@ -330,7 +330,7 @@ const About = () => {
                     <MapPin className="h-6 w-6 text-primary" />
                   </div>
                   <h4 className="font-medium mb-1">Location</h4>
-                  <p className="text-sm text-muted-foreground">Lagos, Nigeria</p>
+                  <p className="text-sm text-muted-foreground">Ogbomoso, Nigeria</p>
                 </div>
               </div>
               <div className="flex justify-center gap-4 mt-8">
