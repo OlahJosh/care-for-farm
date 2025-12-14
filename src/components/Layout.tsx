@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AIChatWidget } from "@/components/AIChatWidget";
 import { CartDrawer } from "@/components/CartDrawer";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { useFarmAdvisorStatus } from "@/hooks/useFarmAdvisorStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -227,6 +228,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           FarmCare
         </Link>
         <div className="flex items-center gap-1">
+          <LanguageSelector />
           <CartButton />
           <NotificationsMenu />
           <UserMenu />
@@ -248,6 +250,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Top Bar for Desktop */}
       <div className="hidden lg:block fixed top-0 right-0 left-64 h-16 border-b border-border bg-card z-40">
         <div className="flex items-center justify-end h-full px-6 gap-1">
+          <LanguageSelector />
           <CartButton />
           <NotificationsMenu />
           <UserMenu />
