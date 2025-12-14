@@ -117,9 +117,12 @@ const Upload = () => {
     setModelCached(isModelCached());
   }, []);
   
-  // Only auto-load model if already cached (saves data)
+  // Auto-load tiny model immediately (only 10MB), or cached model
   useEffect(() => {
-    if (useBrowserDetection && !browserDetectionReady && !isLoadingModel && modelCached) {
+    const shouldAutoLoad = useBrowserDetection && !browserDetectionReady && !isLoadingModel;
+    const isTinyModel = selectedModel === 'tiny';
+    
+    if (shouldAutoLoad && (modelCached || isTinyModel)) {
       setIsLoadingModel(true);
       initializePestDetector((progress) => {
         setModelLoadProgress(progress);
@@ -127,14 +130,15 @@ const Upload = () => {
         setBrowserDetectionReady(success);
         setIsLoadingModel(false);
         if (success) {
-          toast.success("AI model loaded from cache!");
+          setModelCached(true);
+          toast.success(modelCached ? "AI model loaded from cache!" : "AI model ready!");
         }
       }).catch(() => {
         setIsLoadingModel(false);
         setModelCached(false);
       });
     }
-  }, [useBrowserDetection, browserDetectionReady, isLoadingModel, modelCached]);
+  }, [useBrowserDetection, browserDetectionReady, isLoadingModel, modelCached, selectedModel]);
 
   // Handle model size change
   const handleModelChange = (size: ModelSize) => {
