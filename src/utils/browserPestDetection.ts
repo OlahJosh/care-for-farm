@@ -4,13 +4,67 @@ import { pipeline, env } from '@huggingface/transformers';
 env.allowLocalModels = false;
 env.useBrowserCache = true; // Cache models in browser for faster reloads
 
-const MODEL_ID = 'Xenova/vit-base-patch16-224';
+// Model options with different sizes
+export const MODEL_OPTIONS = {
+  tiny: {
+    id: 'onnx-community/mobilenetv4_conv_small.e2400_r224_in1k',
+    name: 'Fast (10MB)',
+    size: '10MB',
+    description: 'Fastest download, good for quick scans'
+  },
+  small: {
+    id: 'onnx-community/mobilenetv3_small_100.lamb_in1k',
+    name: 'Balanced (15MB)',
+    size: '15MB',
+    description: 'Good balance of speed and accuracy'
+  },
+  medium: {
+    id: 'Xenova/mobilevit-small',
+    name: 'Accurate (80MB)',
+    size: '80MB',
+    description: 'Better accuracy for detailed analysis'
+  },
+  full: {
+    id: 'Xenova/vit-base-patch16-224',
+    name: 'Best Quality (350MB)',
+    size: '350MB',
+    description: 'Highest accuracy, requires more download time'
+  }
+} as const;
+
+export type ModelSize = keyof typeof MODEL_OPTIONS;
+
 const MODEL_CACHE_KEY = 'farmcare-pest-model-cached';
+const MODEL_SIZE_KEY = 'farmcare-pest-model-size';
+
+// Get currently selected model size
+export function getSelectedModelSize(): ModelSize {
+  try {
+    const saved = localStorage.getItem(MODEL_SIZE_KEY);
+    if (saved && saved in MODEL_OPTIONS) {
+      return saved as ModelSize;
+    }
+  } catch {}
+  return 'tiny'; // Default to smallest model
+}
+
+// Set selected model size
+export function setSelectedModelSize(size: ModelSize): void {
+  try {
+    localStorage.setItem(MODEL_SIZE_KEY, size);
+    // Clear cached status when changing model
+    localStorage.removeItem(MODEL_CACHE_KEY);
+    // Reset pipeline so new model loads on next use
+    classifierPipeline = null;
+  } catch {}
+}
 
 // Check if model is already cached
 export function isModelCached(): boolean {
   try {
-    return localStorage.getItem(MODEL_CACHE_KEY) === 'true';
+    const cachedSize = localStorage.getItem(MODEL_CACHE_KEY);
+    const selectedSize = getSelectedModelSize();
+    return cachedSize === selectedSize;
   } catch {
     return false;
   }
@@ -19,7 +73,7 @@ export function isModelCached(): boolean {
 // Mark model as cached
 function markModelCached(): void {
   try {
-    localStorage.setItem(MODEL_CACHE_KEY, 'true');
+    localStorage.setItem(MODEL_CACHE_KEY, getSelectedModelSize());
   } catch {
     console.warn('Could not save cache status to localStorage');
   }
@@ -29,6 +83,7 @@ const MAX_IMAGE_DIMENSION = 512;
 
 let classifierPipeline: any = null;
 let isLoading = false;
+let currentLoadedModel: ModelSize | null = null;
 
 // Known pest-related labels mapping
 const PEST_KEYWORDS = [
@@ -48,18 +103,28 @@ export interface BrowserDetectionResult {
 
 // Initialize the classifier (can be called early to pre-load)
 export async function initializePestDetector(onProgress?: (progress: number) => void): Promise<boolean> {
-  if (classifierPipeline) return true;
+  const selectedSize = getSelectedModelSize();
+  
+  // If already loaded with same model, return true
+  if (classifierPipeline && currentLoadedModel === selectedSize) return true;
   if (isLoading) return false;
   
   isLoading = true;
   
+  // Reset pipeline if switching models
+  if (currentLoadedModel !== selectedSize) {
+    classifierPipeline = null;
+  }
+  
+  const modelId = MODEL_OPTIONS[selectedSize].id;
+  
   try {
-    console.log('Initializing browser-based pest detection model...');
+    console.log(`Initializing pest detection model: ${modelId}`);
     
-    // Use a lightweight image classification model
+    // Use WebGPU for better performance
     classifierPipeline = await pipeline(
       'image-classification',
-      MODEL_ID,
+      modelId,
       { 
         device: 'webgpu',
         progress_callback: (data: any) => {
@@ -71,6 +136,7 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
     );
     
     console.log('Pest detection model loaded successfully');
+    currentLoadedModel = selectedSize;
     markModelCached();
     isLoading = false;
     return true;
@@ -81,10 +147,18 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
       // Fallback to WASM if WebGPU not available
       classifierPipeline = await pipeline(
         'image-classification',
-        MODEL_ID,
-        { device: 'wasm' }
+        modelId,
+        { 
+          device: 'wasm',
+          progress_callback: (data: any) => {
+            if (data.progress && onProgress) {
+              onProgress(Math.round(data.progress));
+            }
+          }
+        }
       );
       console.log('Pest detection model loaded with WASM fallback');
+      currentLoadedModel = selectedSize;
       markModelCached();
       isLoading = false;
       return true;
@@ -98,7 +172,9 @@ export async function initializePestDetector(onProgress?: (progress: number) => 
 
 // Download and cache model manually (for one-time download button)
 export async function downloadAndCacheModel(onProgress?: (progress: number) => void): Promise<boolean> {
-  if (classifierPipeline) {
+  const selectedSize = getSelectedModelSize();
+  
+  if (classifierPipeline && currentLoadedModel === selectedSize) {
     markModelCached();
     return true;
   }
@@ -200,7 +276,7 @@ export async function detectPestInBrowser(
   
   try {
     // Initialize model if not ready
-    if (!classifierPipeline) {
+    if (!classifierPipeline || currentLoadedModel !== getSelectedModelSize()) {
       onProgress?.('Loading AI model...');
       const initialized = await initializePestDetector();
       if (!initialized) {
