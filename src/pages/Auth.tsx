@@ -46,12 +46,27 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
       if (error) throw error;
       toast.success("Welcome back!");
+      
+      // Fetch user role and redirect
+      if (data.user) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .single();
+        
+        if (roleData?.role === "agronomist") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
     } finally {
