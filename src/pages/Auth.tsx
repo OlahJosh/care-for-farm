@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Leaf, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import farmcareLogo from "/farmcare-logo.png";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -123,7 +124,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Leaf className="h-12 w-12" style={{ color: '#00B050' }} />
+            <img src={farmcareLogo} alt="FarmCare Logo" className="h-12 w-12 rounded-lg" />
           </div>
           <CardTitle className="text-3xl">FarmCare</CardTitle>
           <CardDescription>Sign in or create your account</CardDescription>

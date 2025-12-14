@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import heroBackground from "@/assets/hero-farm-background.jpg";
+import farmcareLogo from "/farmcare-logo.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { 
-  Leaf, 
   Shield, 
   BarChart3, 
   Camera, 
@@ -34,9 +34,7 @@ const Landing = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Leaf className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
             <h1 className="text-2xl font-bold text-foreground">FarmCare</h1>
           </div>
           <Link to="/auth">
@@ -334,9 +332,7 @@ const Landing = () => {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                <Leaf className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
               <span className="text-xl font-bold text-foreground">FarmCare</span>
               <span className="text-sm text-muted-foreground">Smart Agricultural Intelligence</span>
             </div>
