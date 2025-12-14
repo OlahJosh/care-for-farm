@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AIChatWidget } from "@/components/AIChatWidget";
+import { CartDrawer } from "@/components/CartDrawer";
 import { useFarmAdvisorStatus } from "@/hooks/useFarmAdvisorStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,11 +44,13 @@ import {
   Lightbulb,
   Menu,
   ShoppingBag,
+  ShoppingCart,
   Settings
 } from "lucide-react";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user, userRole, signOut } = useAuth();
+  const { totalItems, setIsCartOpen } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const { hasUrgentRecommendations, urgentCount } = useFarmAdvisorStatus();
@@ -130,6 +134,25 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     </>
   );
 
+  const CartButton = () => (
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      className="relative"
+      onClick={() => setIsCartOpen(true)}
+    >
+      <ShoppingCart className="h-5 w-5" />
+      {totalItems > 0 && (
+        <Badge 
+          variant="default" 
+          className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 flex items-center justify-center text-xs bg-primary"
+        >
+          {totalItems}
+        </Badge>
+      )}
+    </Button>
+  );
+
   const NotificationsMenu = () => (
     <Button 
       variant="ghost" 
@@ -203,7 +226,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <Link to="/dashboard" className="text-xl font-bold text-primary">
           FarmCare
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <CartButton />
           <NotificationsMenu />
           <UserMenu />
         </div>
@@ -223,7 +247,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       
       {/* Top Bar for Desktop */}
       <div className="hidden lg:block fixed top-0 right-0 left-64 h-16 border-b border-border bg-card z-40">
-        <div className="flex items-center justify-end h-full px-6 gap-2">
+        <div className="flex items-center justify-end h-full px-6 gap-1">
+          <CartButton />
           <NotificationsMenu />
           <UserMenu />
         </div>
@@ -231,6 +256,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <main className="flex-1 overflow-auto pt-16">
         {children}
         <AIChatWidget />
+        <CartDrawer />
       </main>
 
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>

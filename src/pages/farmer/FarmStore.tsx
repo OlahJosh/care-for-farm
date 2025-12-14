@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Phone, MapPin } from "lucide-react";
+import { Search, Phone, MapPin, ShoppingCart, Check } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -173,6 +175,8 @@ const products: Product[] = [
 const FarmStore = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+  const { addToCart, items: cartItems } = useCart();
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -189,6 +193,29 @@ const FarmStore = () => {
     const [lat, lng] = location.split(",");
     window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, "_blank");
   };
+
+  const handleAddToCart = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      seller: product.seller,
+    });
+    setAddedItems(prev => new Set(prev).add(product.id));
+    toast.success(`${product.name} added to cart!`);
+    
+    // Reset the "added" state after 2 seconds
+    setTimeout(() => {
+      setAddedItems(prev => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
+    }, 2000);
+  };
+
+  const isInCart = (productId: string) => cartItems.some(item => item.id === productId);
 
   return (
     <Layout>
@@ -274,6 +301,25 @@ const FarmStore = () => {
                     <p className="font-medium">Sold by:</p>
                     <p>{product.seller}</p>
                   </div>
+
+                  {/* Add to Cart Button */}
+                  <Button
+                    className="w-full"
+                    variant={addedItems.has(product.id) ? "secondary" : "default"}
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    {addedItems.has(product.id) ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Added to Cart
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Add to Cart
+                      </>
+                    )}
+                  </Button>
 
                   <div className="flex gap-2 pt-2">
                     <Button
