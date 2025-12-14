@@ -343,15 +343,9 @@ const Landing = () => {
                 <img src={farmcareLogo} alt="FarmCare Logo" className="h-10 w-10 rounded-lg" />
                 <span className="text-xl font-bold text-foreground">FarmCare</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground">
                 Smart Agricultural Intelligence. Protecting harvests with AI-powered technology.
               </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                <a href="tel:+2349024324733" className="hover:text-primary">
-                  +234 902 432 4733
-                </a>
-              </div>
             </div>
 
             {/* Company */}
