@@ -4,9 +4,14 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload as UploadIcon, Camera, Plane, Video } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Upload as UploadIcon, Camera, Plane, Video, Cpu, Cloud, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { detectPestInBrowser, initializePestDetector, checkWebGPUSupport, BrowserDetectionResult } from "@/utils/browserPestDetection";
 
 // Helper function to create alerts for high/medium infestations
 const createAlertIfNeeded = async (reportId: string, scanType: string) => {
@@ -55,12 +60,20 @@ const createAlertIfNeeded = async (reportId: string, scanType: string) => {
 
 const Upload = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [spotCheckFiles, setSpotCheckFiles] = useState<File[]>([]);
   const [droneFiles, setDroneFiles] = useState<File[]>([]);
   const [spotCheckLoading, setSpotCheckLoading] = useState(false);
   const [droneLoading, setDroneLoading] = useState(false);
   const [spotCheckPreviews, setSpotCheckPreviews] = useState<string[]>([]);
   const [dronePreviews, setDronePreviews] = useState<string[]>([]);
+  
+  // Browser-based detection state
+  const [useBrowserDetection, setUseBrowserDetection] = useState(true);
+  const [browserDetectionReady, setBrowserDetectionReady] = useState(false);
+  const [modelLoadProgress, setModelLoadProgress] = useState(0);
+  const [isLoadingModel, setIsLoadingModel] = useState(false);
+  const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null);
   
   // Live Scan state
   const [liveScanActive, setLiveScanActive] = useState(false);
@@ -73,6 +86,95 @@ const Upload = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
+  
+  // Check WebGPU support on mount
+  useEffect(() => {
+    checkWebGPUSupport().then(supported => {
+      setWebGPUSupported(supported);
+      console.log('WebGPU supported:', supported);
+    });
+  }, []);
+  
+  // Pre-load model when browser detection is enabled
+  useEffect(() => {
+    if (useBrowserDetection && !browserDetectionReady && !isLoadingModel) {
+      setIsLoadingModel(true);
+      initializePestDetector((progress) => {
+        setModelLoadProgress(progress);
+      }).then((success) => {
+        setBrowserDetectionReady(success);
+        setIsLoadingModel(false);
+        if (success) {
+          toast.success("AI model loaded! Detection will be instant.");
+        }
+      }).catch(() => {
+        setIsLoadingModel(false);
+        toast.error("Failed to load browser AI. Using server detection.");
+        setUseBrowserDetection(false);
+      });
+    }
+  }, [useBrowserDetection, browserDetectionReady, isLoadingModel]);
+
+  // Helper function for browser-based detection and saving to DB
+  const processBrowserDetection = async (file: File, scanType: string): Promise<string> => {
+    // Run browser detection
+    const result = await detectPestInBrowser(file, (status) => {
+      toast.info(status);
+    });
+    
+    console.log('Browser detection result:', result);
+    
+    // Upload image to storage
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('crop-scans')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw new Error(`Upload failed: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('crop-scans')
+      .getPublicUrl(filePath);
+
+    // Get farm ID
+    const { data: farmData } = await supabase
+      .from('farms')
+      .select('id')
+      .eq('farmer_id', user?.id)
+      .single();
+
+    if (!farmData) {
+      throw new Error('No farm found for user');
+    }
+
+    // Save to database
+    const { data: reportData, error: insertError } = await supabase
+      .from('analysis_reports')
+      .insert({
+        farm_id: farmData.id,
+        scan_type: scanType,
+        image_url: publicUrl,
+        media_type: 'image',
+        infestation_level: result.infestationLevel,
+        confidence_score: result.confidence,
+        pest_types: result.pestTypes,
+        analyzed_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      throw new Error(`Failed to save report: ${insertError.message}`);
+    }
+
+    return reportData.id;
+  };
 
   // Live Scan functions
   const startCamera = async () => {
@@ -379,7 +481,21 @@ const Upload = () => {
         const file = spotCheckFiles[i];
         toast.info(`Processing file ${i + 1} of ${spotCheckFiles.length}...`);
         
-        // Upload image to storage
+        // Use browser detection if enabled and ready
+        if (useBrowserDetection && browserDetectionReady && file.type.startsWith('image/')) {
+          try {
+            const reportId = await processBrowserDetection(file, 'spot_check');
+            reportIds.push(reportId);
+            await createAlertIfNeeded(reportId, 'spot_check');
+            toast.success(`Analyzed in ${(performance.now() / 1000).toFixed(1)}s (Browser AI)`);
+            continue;
+          } catch (browserError) {
+            console.warn('Browser detection failed, falling back to server:', browserError);
+            toast.info('Falling back to server detection...');
+          }
+        }
+        
+        // Server-side detection (fallback or for non-images)
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${fileName}`;
@@ -392,12 +508,10 @@ const Upload = () => {
           throw new Error(`Upload failed for ${file.name}: ${uploadError.message}`);
         }
 
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('crop-scans')
           .getPublicUrl(filePath);
 
-        // Call detection edge function
         const { data, error } = await supabase.functions.invoke('detect-pest', {
           body: { 
             imageUrl: publicUrl,
@@ -410,14 +524,10 @@ const Upload = () => {
         }
 
         reportIds.push(data.reportId);
-        
-        // Create alert if high/medium infestation detected
         await createAlertIfNeeded(data.reportId, 'spot_check');
       }
 
       toast.success(`All ${spotCheckFiles.length} file(s) processed successfully!`);
-      
-      // Navigate to the first report
       navigate(`/farmer/report/${reportIds[0]}`);
     } catch (error) {
       console.error('Error during spot check:', error);
@@ -524,7 +634,57 @@ const Upload = () => {
   return (
     <Layout>
       <div className="p-8">
-        <h1 className="mb-6 text-3xl font-bold text-foreground">Scan for Pests</h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <h1 className="text-3xl font-bold text-foreground">Scan for Pests</h1>
+          
+          {/* Detection Mode Toggle */}
+          <Card className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                {useBrowserDetection ? (
+                  <Cpu className="h-5 w-5 text-primary" />
+                ) : (
+                  <Cloud className="h-5 w-5 text-muted-foreground" />
+                )}
+                <div>
+                  <Label htmlFor="detection-mode" className="font-medium">
+                    {useBrowserDetection ? "Browser AI" : "Server AI"}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {useBrowserDetection 
+                      ? browserDetectionReady 
+                        ? "Instant detection, no cold starts" 
+                        : isLoadingModel 
+                          ? "Loading model..." 
+                          : "Enable for faster analysis"
+                      : "Uses external AI server"
+                    }
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="detection-mode"
+                checked={useBrowserDetection}
+                onCheckedChange={setUseBrowserDetection}
+              />
+            </div>
+            {isLoadingModel && (
+              <div className="mt-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-4 w-4 text-primary animate-pulse" />
+                  <span className="text-xs text-muted-foreground">Loading AI model...</span>
+                </div>
+                <Progress value={modelLoadProgress} className="h-2" />
+              </div>
+            )}
+            {browserDetectionReady && useBrowserDetection && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                <Zap className="h-3 w-3" />
+                <span>Ready! {webGPUSupported ? "WebGPU accelerated" : "WASM mode"}</span>
+              </div>
+            )}
+          </Card>
+        </div>
         
         {/* Live Scan Section */}
         <Card className="mb-6">
